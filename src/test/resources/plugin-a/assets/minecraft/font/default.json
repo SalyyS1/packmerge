@@ -1,0 +1,18 @@
+{
+  "providers": [
+    {
+      "type": "space",
+      "advances": {
+        "": 4
+      }
+    },
+    {
+      "type": "bitmap",
+      "file": "a:font/icons.png",
+      "ascent": 8,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

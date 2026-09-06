@@ -1,0 +1,5 @@
+{
+  "sources": [
+    { "type": "directory", "source": "a_items", "prefix": "a/" }
+  ]
+}

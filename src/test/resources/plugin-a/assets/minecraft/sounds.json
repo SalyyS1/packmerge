@@ -1,0 +1,4 @@
+{
+  "a.click": { "sounds": ["a:click"] },
+  "shared.hit": { "sounds": ["a:hit"] }
+}

@@ -1,0 +1,24 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "b:font/icons.png",
+      "ascent": 8,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "b:font/badges.png",
+      "ascent": 7,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "reference",
+      "id": "b:extras"
+    }
+  ]
+}

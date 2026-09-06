@@ -1,0 +1,4 @@
+{
+  "b.pop": { "sounds": ["b:pop"] },
+  "shared.hit": { "sounds": ["b:hit"] }
+}

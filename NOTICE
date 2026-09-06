@@ -1,0 +1,120 @@
+packmerge
+Copyright 2026 SalyVn (https://github.com/SalyyS1)
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file.
+
+================================================================================
+Third-party dependencies bundled in the shaded release jar
+================================================================================
+
+Licences below were read from each artifact's published POM on Maven Central.
+
+  Clikt 5.1.0                             Apache-2.0
+  com.github.ajalt.clikt:clikt            https://github.com/ajalt/clikt
+                                          The command line only.
+
+  kotlinx.serialization 1.11.0            Apache-2.0
+  org.jetbrains.kotlinx:kotlinx-serialization-json
+                                          https://github.com/Kotlin/kotlinx.serialization
+                                          Reads the packs, leniently, because
+                                          real packs contain trailing commas and
+                                          comments. Files this tool writes go
+                                          through its own emitter so that key
+                                          order, indentation and escaping are
+                                          fixed, and so that a number is copied
+                                          through as the literal it was.
+
+  Kotlin standard library 2.4.10          Apache-2.0
+  org.jetbrains.kotlin:kotlin-stdlib      https://kotlinlang.org
+
+Nothing else is bundled. No Mojang assets are included.
+
+================================================================================
+Where the rules come from
+================================================================================
+
+  Which files stack and which have one owner. That every enabled pack's copy of a
+  font id is loaded and their providers concatenated, rather than the top pack's
+  file replacing the others, is the behaviour of the client's font manager; it is
+  observable in any pack that adds providers to minecraft:default without
+  restating vanilla's own, and in AmberWat/NegativeSpaceFont, whose
+  font/default.json lists three providers of its own and does not stop normal
+  text from rendering. Atlas sources are applied in order by the atlas loader, so
+  concatenating them is additive in the same way. Models, textures, blockstates
+  and shaders resolve to one file from the highest-priority pack.
+
+  What each mergeable file contains — `providers` in a font, `sources` in an
+  atlas, a flat object of event definitions in sounds.json, a flat object of keys
+  in a translation file, `overrides` in a pre-1.21.4 model, `entries` in an item
+  model definition — was read from the vanilla files published by misode/mcmeta
+  (https://github.com/misode/mcmeta, assets branch) and from the pack layout
+  documented on minecraft.wiki (https://minecraft.wiki/w/Resource_pack).
+
+  The provider types that can be enumerated from the file, `bitmap` through its
+  `chars` grid and `space` through the keys of `advances`, and the three that
+  cannot — `reference`, `ttf`, `unihex` — come from the same two sources. That
+  U+0000 marks an empty cell in a `chars` row comes from the bitmap provider's
+  own validation.
+
+  The legacy override rule that makes a duplicated custom_model_data value fatal
+  for one of the two items — the last override whose predicates all hold wins —
+  and its modern counterpart — a range_dispatch selects the entry with the
+  largest threshold that is less than or equal to the value — are the two
+  selection rules stated in the item model definition documentation on
+  minecraft.wiki and visible in every vanilla definition that uses them.
+
+  The pack.mcmeta rules — the format-64 boundary between the supported_formats
+  era and the min_format/max_format era, both new fields being required
+  together, supported_formats being rejected above 64, and pack_format needing
+  to be at least 15 in a multi-version pack — come from the pack metadata codec
+  in the client, via a publicly available decompilation used as read-only
+  evidence. No decompiled code is reproduced here.
+
+  The version-to-format table in PackFormats.kt lists releases only and was
+  derived from the version summary published by misode/mcmeta, which mirrors
+  Mojang's version manifest. The numbers are facts about the game.
+
+================================================================================
+Prior art
+================================================================================
+
+None of these projects' code is used.
+
+  misode/mcmeta                 no licence file — treated as read-only reference
+                                https://github.com/misode/mcmeta
+                                The vanilla assets of every version as plain
+                                directories, which is what the merge rules were
+                                checked against.
+
+  ComunidadAylas/PackSquash     AGPL-3.0      https://github.com/ComunidadAylas/PackSquash
+                                Pack optimisation, done properly. Run it after
+                                this, as a separate program.
+
+  unnamed/creative              MIT           https://github.com/unnamed/creative
+                                A resource pack object model and serialiser for
+                                the JVM, with its own notion of merging packs in
+                                memory. The right dependency if you are doing
+                                this inside a plugin rather than on the command
+                                line.
+
+  AmberWat/NegativeSpaceFont    CC-BY-4.0     https://github.com/AmberWat/NegativeSpaceFont
+                                The pack that demonstrates font providers
+                                merging across packs rather than replacing each
+                                other. Not shipped or reproduced here.
+
+  Oraxen, Nexo, ItemsAdder      Various, some closed or source-available with
+                                restrictions. The packs this tool exists to
+                                combine, and the source of the conventions it
+                                has to respect: items hung off a shared vanilla
+                                item, glyphs allocated in the private use area.
+                                No code from any of them is present, and none of
+                                their config formats is read or written.
+
+  SalyyS1/packmigrate           Apache-2.0    https://github.com/SalyyS1/packmigrate
+                                The same author's converter for legacy overrides.
+                                Run it before merging if one of the packs still
+                                uses them.
+
+Minecraft is a trademark of Mojang Synergies AB. packmerge is an independent
+project and is not affiliated with, endorsed by or sponsored by Mojang or
+Microsoft.

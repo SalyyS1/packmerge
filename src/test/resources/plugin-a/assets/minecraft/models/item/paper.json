@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": { "layer0": "minecraft:item/paper" },
+  "overrides": [
+    { "predicate": { "custom_model_data": 1 }, "model": "a:item/scroll" },
+    { "predicate": { "custom_model_data": 2 }, "model": "a:item/note" }
+  ]
+}
