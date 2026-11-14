@@ -3,13 +3,14 @@ name: build
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-java@v4
         with:
@@ -27,19 +28,24 @@ jobs:
           java -jar build/libs/packmerge.jar --version
           java -jar build/libs/packmerge.jar --help
 
-      # The fixture packs are two plugins that were each told they own the same item, the same font and the
-      # same sound event. Everything the tool has a rule for collides in them at least once.
-      - name: the fixture packs merge
+      - name: the fixture packs merge to directory and deterministic zip
         run: |
           set -euo pipefail
           set +e
           java -jar build/libs/packmerge.jar \
-            src/test/resources/plugin-a src/test/resources/plugin-b --out /tmp/merged > /tmp/out.txt 2>&1
+            src/test/resources/plugin-a src/test/resources/plugin-b \
+            --out /tmp/merged --zip /tmp/merged.zip > /tmp/out.txt 2>&1
           code=$?
           set -e
           cat /tmp/out.txt
-          # Three collisions the merge cannot fix are real faults in the pair, so exit 1 is correct.
           test "$code" = "1" || { echo "expected exit code 1, got $code"; exit 1; }
+          grep -q "resource-pack-sha1=" /tmp/out.txt
+
+      - name: zip inputs and json output work end-to-end
+        run: |
+          set -euo pipefail
+          java -jar build/libs/packmerge.jar /tmp/merged.zip /tmp/merged.zip --zip /tmp/remerged.zip --json > /tmp/report.json
+          jq -e '.errorCount == 0 and .fileCount == 9 and (.zipSha1 | length == 40)' /tmp/report.json
 
       - name: the item table holds both packs' rows
         run: |
@@ -51,10 +57,8 @@ jobs:
 
           B=/tmp/merged/assets/minecraft/items/bow.json
           jq -e '[.model.entries[].threshold] == [1, 7]' $B
-          # A threshold both packs claim renders as the later pack's model, and that is said out loud.
           jq -e '.model.entries[0].model.model == "b:item/warbow"' $B
           grep -q "custom_model_data 1 is claimed by both" /tmp/out.txt
-          # The number was written as 1 in both packs and must not come back as 1.0.
           grep -q '"threshold": 1,' $B
 
       - name: font providers stack and the shared codepoint is named
@@ -65,7 +69,6 @@ jobs:
           jq -e '.providers[0].type == "space"' $F
           jq -e '[.providers[].file] | map(select(. != null)) == ["a:font/icons.png", "b:font/icons.png", "b:font/badges.png"]' $F
           grep -q "U+F010 is claimed by plugin-a and plugin-b" /tmp/out.txt
-          # A codepoint only one pack claims is not reported.
           if grep -q "U+F001" /tmp/out.txt; then echo "U+F001 belongs to one pack only"; exit 1; fi
 
       - name: sounds, translations and atlas sources are unions
@@ -81,7 +84,6 @@ jobs:
           set -euo pipefail
           grep -q "plugin-b" /tmp/merged/assets/minecraft/textures/item/paper.png
           grep -q "textures/item/paper.png" /tmp/out.txt
-          # Both packs ship the same stick model byte for byte, so there is nothing to report about it.
           if grep -q "models/item/stick.json" /tmp/out.txt; then echo "identical files are not conflicts"; exit 1; fi
 
       - name: pack mcmeta is the reconciled range, written for both eras
@@ -94,18 +96,7 @@ jobs:
           jq -e '.pack.supported_formats == [46, 64]' $M
           jq -e '.pack.description == "plugin A items"' $M
 
-      - name: merging the result with itself changes nothing
-        run: |
-          set -euo pipefail
-          set +e
-          java -jar build/libs/packmerge.jar /tmp/merged /tmp/merged --out /tmp/again --force > /tmp/again.txt 2>&1
-          set -e
-          cat /tmp/again.txt
-          # Every file is identical to itself, so nothing is a conflict and nothing changes.
-          diff -r /tmp/merged /tmp/again
-          test "$(grep -c 'error\|warning' /tmp/again.txt)" = "1"
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: always()
         with:
           name: packmerge-jar

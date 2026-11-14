@@ -1,14 +1,13 @@
 # packmerge
 
 [![build](https://github.com/SalyyS1/packmerge/actions/workflows/build.yml/badge.svg)](https://github.com/SalyyS1/packmerge/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/SalyyS1/packmerge?style=flat-square)](https://github.com/SalyyS1/packmerge/releases)
+[![license](https://img.shields.io/github/license/SalyyS1/packmerge?style=flat-square)](LICENSE)
 
-packmerge puts several resource packs into one the way the client would, not the way `cp -r` does. Files the
-game stacks are stacked — a font's providers, an atlas's sources, the rows of a `custom_model_data` table —
-and files that can only have one owner are reported by name, with which pack won. Two plugin packs that both
-extend `minecraft:item/paper` come out of it with all of their items instead of the second one's.
+packmerge puts several Minecraft resource packs (directories or `.zip` archives) into one the way the client would, not the way `cp -r` does. Files the game stacks are stacked (a font's providers, an atlas's sources, the rows of a `custom_model_data` table), and files that can only have one owner are reported by name along with which pack won. Two plugin packs that both extend `minecraft:item/paper` come out with all of their items instead of only the second pack's.
 
-```
-$ packmerge plugin-a plugin-b --out merged
+```text
+$ packmerge plugin-a.zip plugin-b.zip --out merged --zip server-pack.zip
 == plugin-a + plugin-b -> merged
    plugin-a                     9 file(s)
    plugin-b                     9 file(s)
@@ -35,166 +34,81 @@ $ packmerge plugin-a plugin-b --out merged
    note    pack.mcmeta
            plugin-a claims from format 34 but plugin-b needs 46, so the merged pack starts at 46. plugin-a on its own still worked below that.
 
-3 error(s), 2 warning(s), 9 note(s)
+3 error(s), 2 warning(s), 1 note(s)
 
 Wrote 9 file(s) to merged
+Zipped 9 file(s) to server-pack.zip (2418 bytes)
+resource-pack-sha1=9f4a8b...
 ```
-
-Those three errors are not caused by the merge. They were already true of running both packs together, and
-they are the reason the merged pack would have looked broken in ways nobody could explain: two items on the
-same custom model data value, and two glyphs on the same codepoint. The merge is the moment they become
-visible, so it is the moment to print them.
 
 ## Why this exists
 
-A server that runs two custom-item plugins has two packs, and the client can only be handed one. So somebody
-copies one directory over the other, or drags both into the same zip, and the result is missing things.
+A server that runs multiple custom-item or HUD plugins produces multiple resource packs, while `server.properties` can hand the client only one URL (or a fixed stack where unmerged `models/item/*.json` and `items/*.json` overwrite each other). Copying one directory over another applies single-owner semantics to everything: the lower pack's font providers, sound events, translation keys, and `custom_model_data` rows are silently deleted.
 
-The reason is that the client does not treat all files the same way. Enable two packs at once and it loads
-*every* pack's copy of a font id and concatenates the providers, which is why a plugin can add glyphs to the
-default font without restating vanilla's. It does the same with atlas sources. But for a model, a texture or
-a blockstate there is exactly one winner: the pack higher in the list. A directory copy applies the second
-rule to everything, so the lower pack's font providers, sound events and translation keys are not merged —
-they are deleted.
-
-The expensive case is the one that looks like neither. Both plugins hang their items off the same vanilla
-item, so both write the same file: `models/item/paper.json` with an `overrides` list before 1.21.4, and
-`items/paper.json` with a `custom_model_data` dispatch after it. Neither pack owns that file in any
-meaningful sense — each contributes rows to a table — and overwriting it drops every row the other pack
-contributed. Nothing errors. The items still exist in the plugin, still carry their custom model data, and
-render as plain paper.
-
-packmerge unions the rows, concatenates what stacks, and for everything else takes the later pack and says
-so. It also tells you the things a union cannot fix: two packs claiming the same custom model data value on
-one item, or the same codepoint in one font. Those need a renumber in a plugin's configuration, and every
-item already handed out to a player needs to survive it, so they are printed one per line rather than
-counted.
+packmerge unions item tables, concatenates additive arrays, reconciles dual-era `pack.mcmeta` ranges, emits byte-deterministic `.zip` archives with ready-to-paste `resource-pack-sha1` digests, and surfaces real codepoint or `custom_model_data` collisions as explicit errors.
 
 ## Getting started
 
-You need Java 21 or newer. Download `packmerge.jar` from the releases page. Packs have to be directories —
-unzip them first.
+Requires Java 21 or newer. Download `packmerge.jar` from [**Releases**](https://github.com/SalyyS1/packmerge/releases). Inputs can be unpacked directories, `.zip` archives, or a mix of both:
 
 ```sh
-packmerge base extra --out merged           # last pack wins where only one can
-packmerge a b c --out merged --dry-run      # report, write nothing
-packmerge a b --out merged --versions 1.21.4..26.2
+packmerge oraxen.zip modelengine.zip hud-pack/ --zip server-pack.zip
+packmerge base extra --out merged --zip server-pack.zip
+packmerge a.zip b.zip --dry-run --json > merge-report.json
+packmerge a.zip b.zip --zip server-pack.zip --versions 1.21.4..26.2 --strict
 ```
 
-The order is the order the client would apply them: the last pack given is the one that wins. Nothing that
-goes in is modified — the output is a new directory.
-
-| Option | What it does |
+| Option | Description |
 |---|---|
-| `--out DIR` | Where the merged pack is written. Required. Refuses a directory that already has files in it unless `--force` |
-| `--versions 1.21.4..26.2` | What `pack.mcmeta` should claim. By default it is worked out from what the packs themselves claim |
-| `--description TEXT` | The description for the merged `pack.mcmeta`. Defaults to the first pack's |
-| `--dry-run` | Report and write nothing |
-| `--force` | Write into `--out` even if it is not empty |
-| `--strict` | Exit non-zero on warnings as well as errors, for a CI step |
+| `--out DIR` | Directory to write the merged unpacked files into (refuses non-empty directories unless `--force`) |
+| `--zip FILE` | Write a byte-reproducible `.zip` archive (sorted entries, fixed epoch timestamp) and print `resource-pack-sha1=<sha1>` |
+| `--versions 1.21.4..26.2` | Explicit `pack.mcmeta` version range (defaults to the intersection of the input packs' ranges) |
+| `--description TEXT` | Description for the merged `pack.mcmeta` (defaults to the first pack's description) |
+| `--dry-run` | Compute the full merge plan and collision report without writing files |
+| `--json` | Emit machine-readable JSON report (`zipSha1`, `zipSha256`, `combinedCounts`, `issues`) to stdout |
+| `--force` | Overwrite an existing `--out` directory or `--zip` file |
+| `--strict` | Exit `1` on warnings as well as errors in CI pipelines |
 
-Exit codes are `0` for a clean merge, `1` when something was reported that will render wrong, and `2` when
-the command itself could not proceed.
+Exit codes: `0` for a clean merge, `1` when collisions or `--strict` warnings are found, and `2` on invalid CLI arguments or unreadable archives.
 
-## What gets merged, and how
+### GitHub Action
 
-| File | Rule | Why |
-|---|---|---|
-| `font/*.json` | `providers` concatenated in pack order | The client loads every pack's copy of a font id and concatenates them, which is the whole reason a plugin's glyphs coexist with vanilla's |
-| `atlases/*.json` | `sources` concatenated | The client applies sources in order; more of them is additive |
-| `sounds.json` | Key union | Independent event definitions. A key two packs define differently is a warning, because one pack's sound stops existing |
-| `lang/*.json` | Key union | Independent keys. A key defined twice is a note: overriding a translation is usually the point |
-| `models/**.json` with `overrides` | `overrides` lists unioned, in pack order | Each pack contributes rows to one table. Ties are reported: the last matching override is the one the client picks |
-| `items/**.json` on `custom_model_data` | `entries` unioned by threshold, then sorted | Same table, new format. A threshold claimed twice is reported; the later pack renders |
-| `pack.mcmeta` | Rebuilt from the reconciled range | See below |
-| Everything else | The later pack wins, and the report names both | Textures, shaders, blockstates, sounds, particle definitions: one owner, and you should know when there was a fight |
-
-Identical files are not a conflict. Two plugin packs shipping the same copy of a vanilla model, or the same
-`icons.png`, is normal; reporting it would bury the lines that matter. Bytes are compared, so "identical"
-means identical.
-
-Two things are deliberately *not* silently reconciled:
-
-- **A codepoint claimed by two fonts.** Only one glyph can render there. Which one is not something this
-  tool asserts — it prints the codepoint and the packs, because the fix is a plugin configuration change and
-  a decision about items players already hold.
-- **A custom model data value claimed by two items.** Same reasoning: one of the two items is invisible from
-  the moment the packs are merged, and no arrangement of the file changes that.
-
-`reference`, `ttf` and `unihex` font providers are passed through in order and counted, but their coverage
-comes from a font or an archive at load time, so they cannot be checked for collisions. The report says that
-rather than implying the check was clean.
-
-## pack.mcmeta
-
-The merged pack can only honestly claim the versions all of its inputs claim, so the range is the
-intersection: the highest floor and the lowest stated ceiling. Packs written by plugins often state a bare
-`pack_format` and no ceiling at all, so when nobody states one the newest release this tool knows is used and
-a note says so. When the ranges do not overlap at all you get an error and the last pack's range, and
-`--versions` is there to settle it yourself.
-
-The file is then written to the rules the client enforces, which changed at resource pack format 64 — 1.21.8,
-the last format without minor versions — and are unforgiving on both sides of that line:
-
-- from 65 up, `min_format` and `max_format` are mandatory, must both be present, and `supported_formats` is
-  *rejected*, with the client telling you to delete it;
-- reaching back below 65 means also carrying `supported_formats` and `pack_format`, with
-  `supported_formats` starting on exactly `min_format`'s major and ending on either `max_format`'s major or
-  64, and `pack_format` inside the range and at least 15;
-- a pack that states only `pack_format` cannot claim support for anything above 64 at all.
-
-Get one wrong by hand and the pack is listed as incompatible or refuses to load, rather than degrading
-politely.
-
-## What it does not do
-
-- **No plugin config merging.** It merges packs, not the YAML of the plugins that generated them. A
-  renumbering it suggests has to be done in the plugin, then the pack regenerated.
-- **No zip handling.** Unzip, merge, zip. One less thing to get wrong about entry order and timestamps.
-- **No renumbering of its own.** It could reassign a colliding custom model data value or codepoint in the
-  pack, and the item in the plugin's config and in every chest that holds one would still point at the old
-  number. A merge tool that silently renumbers is worse than one that reports.
-- **No format migration.** If one pack still uses `overrides` and another uses item model definitions, they
-  are different files and both are kept — the game reads the definitions and ignores the overrides on 1.21.4
-  and later. Converting the old one is
-  [packmigrate](https://github.com/SalyyS1/packmigrate)'s job, and doing it first gives a better merge.
-- **No pack optimisation.** [PackSquash](https://github.com/ComunidadAylas/PackSquash) does that properly;
-  run it afterwards.
-
-## Building it
-
-```sh
-./gradlew build          # tests, then the shaded jar in build/libs
+```yaml
+- uses: SalyyS1/packmerge@v0.2.0
+  with:
+    args: packs/oraxen.zip packs/modelengine.zip packs/ui.zip --zip dist/server-pack.zip --strict
 ```
 
-Kotlin 2.4.10 on a Java 21 toolchain, Gradle 9.7.1, one shaded jar with Clikt and kotlinx.serialization
-inside. Other people's JSON is read leniently, because real packs have trailing commas and comments in them.
-What is written back goes through this project's own emitter, with one exception that matters: a number is
-copied through as the literal it was, so `8` does not come back as `8.0` and a threshold you wrote as `1` is
-still `1` after the merge.
+## Merge rules
 
-The tests are two fixture packs that collide in every way the tool has a rule for — the same item table, the
-same font codepoint, the same sound event, the same translation key, the same texture, and a
-`pack.mcmeta` pair with different ranges — plus one file both ship byte for byte, which has to produce no
-report at all.
+| File pattern | Merge behavior | Rationale |
+|---|---|---|
+| `font/*.json` | `providers` concatenated in pack order | Vanilla loads every pack's copy of a font ID and concatenates providers; duplicate codepoints across packs are reported as errors |
+| `atlases/*.json` | `sources` concatenated in pack order | Vanilla applies atlas sources additively |
+| `sounds.json` | Key union | Independent sound events merge cleanly; conflicting definitions warn and keep the later pack |
+| `lang/*.json` | Key union | Translation keys merge cleanly; overrides are recorded as notes |
+| `models/**.json` with `overrides` | `overrides` lists unioned in pack order | Legacy `custom_model_data` rows combine into one table; duplicate predicates are reported as errors |
+| `items/**.json` on `custom_model_data` | `entries` unioned by threshold and sorted | 1.21.4+ item model dispatch tables combine cleanly; duplicate thresholds are reported as errors |
+| `pack.mcmeta` | Reconciled intersection range | Emits consistent dual-era fields (`pack_format`, `supported_formats`, `min_format`, `max_format`) across format 64/65 |
+| Single-owner assets | Later pack wins with warning | Textures, shaders, blockstates, and OGG audio files warn when two packs ship different bytes; byte-identical copies are silent |
 
-## Credits
+## Building from source
 
-The `NOTICE` file lists the dependencies and the sources each rule was checked against.
+```sh
+./gradlew build --no-daemon    # runs JUnit 5 suite and builds build/libs/packmerge.jar
+```
 
-The merge rules were checked against the vanilla files published by
-[misode/mcmeta](https://github.com/misode/mcmeta): what a font file, an atlas, `sounds.json` and an item
-model definition actually contain, and what the client's own `pack.mcmeta` looks like across the format-64
-boundary. [minecraft.wiki](https://minecraft.wiki) documents the pack layout and the provider types.
+## Related Minecraft Engineering Tools by Salyvn
 
-Oraxen, Nexo and ItemsAdder are the packs this tool exists to combine. None of their code is here and none
-of their configuration formats is read or written.
-
-packmerge is an independent project and is not affiliated with, endorsed by or sponsored by Mojang or
-Microsoft. Minecraft is a trademark of Mojang Synergies AB.
+- [**glyphsmith**](https://github.com/SalyyS1/glyphsmith): Deterministic bitmap font glyph solver, lockfile compiler, and resource-pack font auditor.
+- [**packmigrate**](https://github.com/SalyyS1/packmigrate): Automated resource pack migrator across Minecraft format versions and 1.21.4+ item definitions.
+- [**shadersmith**](https://github.com/SalyyS1/shadersmith): Vanilla core-shader and post-effect pipeline validator and builder for Minecraft resource packs.
+- [**foliascan**](https://github.com/SalyyS1/foliascan): Static bytecode analyzer with SARIF call-graph taint flows for Paper and Folia server plugins.
+- [**pluginscope**](https://github.com/SalyyS1/pluginscope): Plugin JAR dependency, shadow-relocation, and Paper/Spigot compatibility auditor.
+- [**serverdoctor**](https://github.com/SalyyS1/serverdoctor): Live config, JVM flag, and crash/timings diagnostic CLI for Minecraft servers.
+- [**mcstage**](https://github.com/SalyyS1/mcstage): Reproducible staging environment builder for Paper, Folia, and Velocity server networks.
+- [**minecraftkit**](https://github.com/SalyyS1/minecraftkit): MCP server and engineering knowledge kit for Minecraft plugin and pack development.
 
 ## Licence
 
-Apache-2.0. See `LICENSE`.
-
-
+Independent project; not affiliated with Mojang or Microsoft. Licensed under [Apache-2.0](LICENSE).

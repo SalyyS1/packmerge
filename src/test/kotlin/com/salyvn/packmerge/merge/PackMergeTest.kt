@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 /**
@@ -118,5 +120,40 @@ class PackMergeTest {
         assertEquals("88", meta["max_format"]!!.jsonPrimitive.content)
         // plugin-a claimed from 34 and no longer does, which the report explains rather than hiding.
         assertTrue(plan.issues.any { it.path == "pack.mcmeta" && "plugin-a" in it.message && "34" in it.message })
+    }
+
+    @Test
+    fun `merges zip input packs and emits byte-reproducible zip output with stable sha1`(@TempDir dir: Path) {
+        val dirA = PackSource(Path.of("src/test/resources/plugin-a"), 0)
+        val dirB = PackSource(Path.of("src/test/resources/plugin-b"), 1)
+
+        // Package plugin-a and plugin-b as .zip archives first
+        val zipA = dir.resolve("plugin-a.zip")
+        val zipB = dir.resolve("plugin-b.zip")
+        PackMerge(listOf(dirA), null, null).let { single ->
+            single.writeZip(single.plan(), zipA)
+        }
+        PackMerge(listOf(dirB), null, null).let { single ->
+            single.writeZip(single.plan(), zipB)
+        }
+
+        // Merge the two .zip archives directly
+        val fromZips = PackMerge(listOf(PackSource(zipA, 0), PackSource(zipB, 1)), null, null)
+        val zipPlan = fromZips.plan()
+        assertEquals(9, zipPlan.files.size)
+        assertEquals(3, zipPlan.errors)
+
+        val outZip1 = dir.resolve("merged-1.zip")
+        val outZip2 = dir.resolve("merged-2.zip")
+        val art1 = fromZips.writeZip(zipPlan, outZip1)
+        val art2 = fromZips.writeZip(zipPlan, outZip2)
+        assertEquals(art1.sha1, art2.sha1)
+        assertEquals(40, art1.sha1.length)
+        assertTrue(Files.readAllBytes(outZip1).contentEquals(Files.readAllBytes(outZip2)))
+
+        val jsonText = JsonMergeReport.render(zipPlan, null, art1, dryRun = false)
+        val parsed = JsonIo.parse(jsonText).jsonObject
+        assertEquals(art1.sha1, parsed["zipSha1"]!!.jsonPrimitive.content)
+        assertEquals("9", parsed["fileCount"]!!.jsonPrimitive.content)
     }
 }

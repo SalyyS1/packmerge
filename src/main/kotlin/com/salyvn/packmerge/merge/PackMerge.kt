@@ -2,8 +2,19 @@ package com.salyvn.packmerge.merge
 
 import com.salyvn.packmerge.core.PackFormat
 import com.salyvn.packmerge.core.PackMeta
+import java.io.BufferedOutputStream
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.FileTime
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+
+data class ZipArtifact(
+    val path: Path,
+    val sha1: String,
+    val sha256: String,
+    val sizeBytes: Long,
+)
 
 class MergePlan(
     val packs: List<PackSource>,
@@ -24,8 +35,8 @@ class MergePlan(
  * The merge itself.
  *
  * Every file path present in any pack is visited once. A path only one pack has is copied. A path several
- * packs have is combined by the rule for its kind ([MergeRules]), and when there is no rule — a texture, a
- * shader, a blockstate — the later pack wins and the report says which packs were involved, because a
+ * packs have is combined by the rule for its kind ([MergeRules]), and when there is no rule (a texture, a
+ * shader, a blockstate) the later pack wins and the report says which packs were involved, because a
  * silently overwritten file is the thing a merge is supposed to surface.
  *
  * Identical content is not a conflict. Two plugin packs shipping the same copy of a vanilla model or the
@@ -97,6 +108,33 @@ class PackMerge(
         }
     }
 
+    /**
+     * Writes a byte-reproducible `.zip` archive with sorted entry paths and a fixed epoch timestamp so CDN
+     * URLs and `server.properties` `resource-pack-sha1` hashes stay identical when pack contents do not change.
+     */
+    fun writeZip(plan: MergePlan, zipTarget: Path): ZipArtifact {
+        zipTarget.toAbsolutePath().parent?.let { Files.createDirectories(it) }
+        BufferedOutputStream(Files.newOutputStream(zipTarget)).use { rawOut ->
+            ZipOutputStream(rawOut).use { zos ->
+                for (file in plan.files.sortedBy { it.relative }) {
+                    val entry = ZipEntry(file.relative).apply {
+                        lastModifiedTime = FIXED_ZIP_TIME
+                    }
+                    zos.putNextEntry(entry)
+                    zos.write(file.bytes)
+                    zos.closeEntry()
+                }
+            }
+        }
+        val zipBytes = Files.readAllBytes(zipTarget)
+        return ZipArtifact(
+            path = zipTarget,
+            sha1 = sha1Hex(zipBytes),
+            sha256 = digest(zipBytes),
+            sizeBytes = zipBytes.size.toLong(),
+        )
+    }
+
     private fun combine(relative: String, kind: MergeKind, sources: List<PackSource>, report: MergeReport): ByteArray? =
         when (kind) {
             MergeKind.FONT -> FontMerge.merge(relative, sources, report)
@@ -111,4 +149,9 @@ class PackMerge(
     /** The first description the packs offer, so the merged pack is recognisable in the pack list. */
     private fun descriptionFrom(declared: List<DeclaredRange>): String =
         declared.firstNotNullOfOrNull { it.description } ?: "merged pack"
+
+    private companion object {
+        /** 1980-01-01T00:00:00Z, the earliest timestamp representable in standard ZIP headers. */
+        val FIXED_ZIP_TIME: FileTime = FileTime.fromMillis(315_532_800_000L)
+    }
 }

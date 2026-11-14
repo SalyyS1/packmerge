@@ -1,0 +1,42 @@
+name: 'Packmerge Resource Pack Compiler'
+description: 'Merge Minecraft plugin resource pack directories and .zip archives deterministically in CI.'
+author: 'Salyvn'
+branding:
+  icon: 'layers'
+  color: 'green'
+
+inputs:
+  args:
+    description: 'Arguments passed to packmerge (for example: "oraxen.zip modelengine.zip --zip server-pack.zip --strict")'
+    required: true
+  version:
+    description: 'Packmerge release tag to download (defaults to v0.2.0)'
+    required: false
+    default: 'v0.2.0'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Java 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    - name: Download and run packmerge
+      shell: bash
+      env:
+        PACKMERGE_VERSION: ${{ inputs.version }}
+        PACKMERGE_ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        VER="${PACKMERGE_VERSION#v}"
+        CACHE_DIR="${RUNNER_TEMP:-/tmp}/packmerge-${VER}"
+        mkdir -p "$CACHE_DIR"
+        JAR="$CACHE_DIR/packmerge.jar"
+        if [ ! -f "$JAR" ]; then
+          curl -fsSL -o "$JAR" \
+            "https://github.com/SalyyS1/packmerge/releases/download/v${VER}/packmerge.jar"
+        fi
+        # shellcheck disable=SC2086
+        java -jar "$JAR" $PACKMERGE_ARGS
