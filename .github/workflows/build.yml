@@ -28,24 +28,27 @@ jobs:
           java -jar build/libs/packmerge.jar --version
           java -jar build/libs/packmerge.jar --help
 
-      - name: the fixture packs merge to directory and deterministic zip
+      - name: the fixture packs merge to directory, deterministic zip, and SARIF v2.1.0
         run: |
           set -euo pipefail
           set +e
           java -jar build/libs/packmerge.jar \
             src/test/resources/plugin-a src/test/resources/plugin-b \
-            --out /tmp/merged --zip /tmp/merged.zip > /tmp/out.txt 2>&1
+            --out /tmp/merged --zip /tmp/merged.zip --sarif /tmp/packmerge.sarif > /tmp/out.txt 2>&1
           code=$?
           set -e
           cat /tmp/out.txt
           test "$code" = "1" || { echo "expected exit code 1, got $code"; exit 1; }
           grep -q "resource-pack-sha1=" /tmp/out.txt
+          jq -e '.version == "2.1.0" and .runs[0].tool.driver.name == "packmerge"' /tmp/packmerge.sarif
+          jq -e '[.runs[0].results[].ruleId] | index("PM001") != null and index("PM002") != null and index("PM003") != null' /tmp/packmerge.sarif
+          jq -e '.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uriBaseId == "%SRCROOT%"' /tmp/packmerge.sarif
 
-      - name: zip inputs and json output work end-to-end
+      - name: zip inputs, 26.3 versions flag, and json output work end-to-end
         run: |
           set -euo pipefail
-          java -jar build/libs/packmerge.jar /tmp/merged.zip /tmp/merged.zip --zip /tmp/remerged.zip --json > /tmp/report.json
-          jq -e '.errorCount == 0 and .fileCount == 9 and (.zipSha1 | length == 40)' /tmp/report.json
+          java -jar build/libs/packmerge.jar /tmp/merged.zip /tmp/merged.zip --versions 1.21.4..26.3 --zip /tmp/remerged.zip --json > /tmp/report.json
+          jq -e '.errorCount == 0 and .fileCount == 9 and .maxFormat == "97" and (.zipSha1 | length == 40)' /tmp/report.json
 
       - name: the item table holds both packs' rows
         run: |

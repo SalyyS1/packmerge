@@ -13,7 +13,15 @@ data class PackSummaryJson(
 )
 
 @Serializable
+data class OverlaySummaryJson(
+    val directory: String,
+    val minFormat: String,
+    val maxFormat: String,
+)
+
+@Serializable
 data class IssueJson(
+    val rule: String,
     val level: String,
     val path: String,
     val message: String,
@@ -30,6 +38,7 @@ data class MergeReportPayload(
     val fileCount: Int,
     val minFormat: String,
     val maxFormat: String,
+    val overlays: List<OverlaySummaryJson> = emptyList(),
     val combinedCounts: Map<String, Int>,
     val errorCount: Int,
     val warningCount: Int,
@@ -66,12 +75,20 @@ object JsonMergeReport {
             fileCount = plan.files.size,
             minFormat = plan.range.first.toString(),
             maxFormat = plan.range.second.toString(),
+            overlays = plan.overlays.map { ov ->
+                OverlaySummaryJson(
+                    directory = ov.directory,
+                    minFormat = ov.min.toString(),
+                    maxFormat = ov.max.toString(),
+                )
+            },
             combinedCounts = plan.combined.entries.associate { (k, v) -> k.name.lowercase() to v },
             errorCount = plan.errors,
             warningCount = plan.warnings,
             noteCount = plan.notes,
             issues = plan.issues.map { issue ->
                 IssueJson(
+                    rule = issue.rule.id,
                     level = issue.level.name.lowercase(),
                     path = issue.path,
                     message = issue.message,

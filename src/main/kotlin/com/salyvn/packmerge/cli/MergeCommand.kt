@@ -15,8 +15,10 @@ import com.salyvn.packmerge.merge.MergeKind
 import com.salyvn.packmerge.merge.MergePlan
 import com.salyvn.packmerge.merge.PackMerge
 import com.salyvn.packmerge.merge.PackSource
+import com.salyvn.packmerge.merge.SarifReport
 import com.salyvn.packmerge.merge.ZipArtifact
 import java.io.IOException
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.isDirectory
@@ -24,11 +26,7 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 
 /**
- * The one command.
- *
- * Packs (directories or `.zip` archives) are given in the order the client would apply them: the last one
- * wins where two of them cannot both be right. The output is written to `--out` and/or `--zip`, and
- * `--dry-run` reports without writing at all.
+ * CLI command for deterministic multi-pack resource pack merging and SARIF v2.1.0 conflict analysis.
  */
 class MergeCommand : CliktCommand(name = "packmerge") {
 
@@ -46,9 +44,14 @@ class MergeCommand : CliktCommand(name = "packmerge") {
         help = "Write a byte-deterministic merged .zip archive and print its resource-pack-sha1 digest",
     ).path()
 
+    private val sarif by option(
+        "--sarif",
+        help = "Write an OASIS SARIF v2.1.0 conflict diagnostic report to FILE",
+    ).path()
+
     private val versions by option(
         "--versions",
-        help = "Range pack.mcmeta should claim, e.g. 1.21.4..26.2. Default: what the packs themselves claim",
+        help = "Range pack.mcmeta should claim, e.g. 1.21.4..26.3. Default: what the packs themselves claim",
     )
 
     private val description by option("--description", help = "Description for the merged pack.mcmeta")
@@ -75,8 +78,8 @@ class MergeCommand : CliktCommand(name = "packmerge") {
 
     private fun execute() {
         if (packs.size < 2) fail("Give at least two packs to merge. One pack is already merged.")
-        if (out == null && zip == null && !dryRun) {
-            fail("Give --out DIR, --zip FILE, or --dry-run.")
+        if (out == null && zip == null && sarif == null && !dryRun) {
+            fail("Give --out DIR, --zip FILE, --sarif FILE, or --dry-run.")
         }
         packs.forEach { pack ->
             if (!pack.isDirectory() && !pack.isRegularFile()) {
@@ -97,8 +100,9 @@ class MergeCommand : CliktCommand(name = "packmerge") {
         val merge = PackMerge(sources, range, description)
         val plan = merge.plan()
 
+        val effectiveDryRun = dryRun || (outDir == null && zipPath == null)
         var zipArtifact: ZipArtifact? = null
-        if (!dryRun) {
+        if (!effectiveDryRun) {
             if (outDir != null) {
                 merge.write(plan, outDir)
             }
@@ -107,14 +111,20 @@ class MergeCommand : CliktCommand(name = "packmerge") {
             }
         }
 
+        sarif?.let { sarifTarget ->
+            sarifTarget.toAbsolutePath().parent?.let { Files.createDirectories(it) }
+            Files.writeString(sarifTarget, SarifReport.render(plan))
+        }
+
         if (json) {
-            echo(JsonMergeReport.render(plan, outDir, zipArtifact, dryRun))
+            echo(JsonMergeReport.render(plan, outDir, zipArtifact, effectiveDryRun))
         } else {
             val targetLabel = outDir?.fileName?.toString()
                 ?: zipPath?.fileName?.toString()
+                ?: sarif?.fileName?.toString()?.let { "(sarif: $it)" }
                 ?: "(dry-run)"
             report(plan, targetLabel)
-            if (dryRun) {
+            if (effectiveDryRun) {
                 echo("")
                 echo("Nothing written. Drop --dry-run to write ${plan.files.size} file(s).")
             } else {
@@ -127,6 +137,7 @@ class MergeCommand : CliktCommand(name = "packmerge") {
                     echo("resource-pack-sha1=${zipArtifact.sha1}")
                 }
             }
+            sarif?.let { echo("Wrote SARIF v2.1.0 report to $it") }
         }
 
         if (plan.errors > 0 || (strict && plan.warnings > 0)) throw ProgramResult(1)
@@ -136,7 +147,8 @@ class MergeCommand : CliktCommand(name = "packmerge") {
         echo("== ${plan.packs.joinToString(" + ") { it.name }} -> $targetLabel")
         plan.packs.forEach { pack -> echo("   ${pack.name.padEnd(28)} ${pack.files.size} file(s)") }
         echo("")
-        echo("   ${plan.files.size} file(s), pack.mcmeta claiming ${plan.range.first}..${plan.range.second}")
+        val overlaySuffix = if (plan.overlays.isNotEmpty()) ", ${plan.overlays.size} overlay(s)" else ""
+        echo("   ${plan.files.size} file(s), pack.mcmeta claiming ${plan.range.first}..${plan.range.second}$overlaySuffix")
         LABELS.forEach { (kind, label) ->
             plan.combined[kind]?.let { count -> echo("   $count $label") }
         }
@@ -144,7 +156,7 @@ class MergeCommand : CliktCommand(name = "packmerge") {
         if (plan.issues.isNotEmpty()) {
             echo("")
             plan.issues.forEach { issue ->
-                echo("   ${issue.level.name.lowercase().padEnd(7)} ${issue.path}")
+                echo("   ${issue.level.name.lowercase().padEnd(7)} [${issue.rule.id}] ${issue.path}")
                 echo("           ${issue.message}")
             }
         }
@@ -158,7 +170,6 @@ class MergeCommand : CliktCommand(name = "packmerge") {
     }
 
     private companion object {
-        /** Only the kinds worth counting in a summary line, in the order a reader cares about them. */
         val LABELS: List<Pair<MergeKind, String>> = listOf(
             MergeKind.ITEM_DEFINITION to "item model definition(s) unioned",
             MergeKind.LEGACY_MODEL to "legacy model(s) with their overrides unioned",

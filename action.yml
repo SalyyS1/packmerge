@@ -1,5 +1,5 @@
 name: 'Packmerge Resource Pack Compiler'
-description: 'Merge Minecraft plugin resource pack directories and .zip archives deterministically in CI.'
+description: 'Merge Minecraft plugin resource pack directories and .zip archives deterministically with SARIF v2.1.0 conflict diagnostics.'
 author: 'Salyvn'
 branding:
   icon: 'layers'
@@ -7,12 +7,21 @@ branding:
 
 inputs:
   args:
-    description: 'Arguments passed to packmerge (for example: "oraxen.zip modelengine.zip --zip server-pack.zip --strict")'
+    description: 'Arguments passed to packmerge (for example: "oraxen.zip nexo.zip --zip server-pack.zip --strict")'
     required: true
-  version:
-    description: 'Packmerge release tag to download (defaults to v0.2.0)'
+  sarif:
+    description: 'Optional output path for an OASIS SARIF v2.1.0 conflict diagnostic report'
     required: false
-    default: 'v0.2.0'
+    default: ''
+  version:
+    description: 'Packmerge release tag to download (defaults to v0.3.0)'
+    required: false
+    default: 'v0.3.0'
+
+outputs:
+  sarif-file:
+    description: 'Path to the generated SARIF v2.1.0 report when the sarif input is set'
+    value: ${{ inputs.sarif }}
 
 runs:
   using: 'composite'
@@ -28,6 +37,7 @@ runs:
       env:
         PACKMERGE_VERSION: ${{ inputs.version }}
         PACKMERGE_ARGS: ${{ inputs.args }}
+        PACKMERGE_SARIF: ${{ inputs.sarif }}
       run: |
         set -euo pipefail
         VER="${PACKMERGE_VERSION#v}"
@@ -38,5 +48,9 @@ runs:
           curl -fsSL -o "$JAR" \
             "https://github.com/SalyyS1/packmerge/releases/download/v${VER}/packmerge.jar"
         fi
+        SARIF_ARG=""
+        if [ -n "$PACKMERGE_SARIF" ]; then
+          SARIF_ARG="--sarif $PACKMERGE_SARIF"
+        fi
         # shellcheck disable=SC2086
-        java -jar "$JAR" $PACKMERGE_ARGS
+        java -jar "$JAR" $PACKMERGE_ARGS $SARIF_ARG

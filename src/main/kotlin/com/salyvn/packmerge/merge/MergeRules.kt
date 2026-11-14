@@ -1,15 +1,11 @@
 package com.salyvn.packmerge.merge
 
 /**
- * How a file has to be combined when two packs both contain it.
- *
- * The distinction the client itself makes is between files that *stack* and files that *replace*. A font id
- * is loaded from every pack and its providers concatenated; a model file has exactly one owner and the pack
- * higher in the list wins. Copying one directory over another treats everything as the second kind, which
- * is why merging by hand loses one plugin's fonts, sounds or items and does it quietly.
+ * How a file has to be combined when two packs both contain it, both at the root (`assets/<ns>/...`) and
+ * inside declared `pack.mcmeta` overlay directories (`<overlay>/assets/<ns>/...`).
  */
 enum class MergeKind {
-    /** Rebuilt from the reconciled version range rather than merged. */
+    /** Rebuilt from the reconciled version range and overlays rather than merged. */
     PACK_META,
 
     /** `providers` concatenated, and codepoints checked for collisions across packs. */
@@ -27,18 +23,22 @@ enum class MergeKind {
     /** A pre-1.21.4 model file, which is only mergeable when the packs disagree solely about `overrides`. */
     LEGACY_MODEL,
 
-    /** An item model definition, mergeable when both are a `custom_model_data` dispatch. */
+    /** A 1.21.4..26.3 item model definition (`range_dispatch` and/or `select` on `custom_model_data`). */
     ITEM_DEFINITION,
 
-    /** One owner: the last pack to declare it wins, and that is worth saying out loud. */
+    /** One owner: the last pack to declare it wins, and that is reported as a warning. */
     SINGLE_OWNER,
 }
 
 object MergeRules {
-    fun of(relative: String): MergeKind {
+    fun of(relative: String, overlayDirs: Set<String> = emptySet()): MergeKind {
         if (relative == "pack.mcmeta") return MergeKind.PACK_META
-        val parts = relative.split('/')
-        // Everything below is `assets/<namespace>/<what>/...`.
+        val rawParts = relative.split('/')
+        val parts = if (rawParts.size >= 4 && rawParts[0] in overlayDirs && rawParts[1] == "assets") {
+            rawParts.drop(1)
+        } else {
+            rawParts
+        }
         if (parts.size < 3 || parts[0] != "assets") return MergeKind.SINGLE_OWNER
         val what = parts[2]
         val isJson = relative.endsWith(".json")

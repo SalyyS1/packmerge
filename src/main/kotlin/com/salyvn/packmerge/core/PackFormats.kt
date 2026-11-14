@@ -1,16 +1,13 @@
 package com.salyvn.packmerge.core
 
-
-
 /**
- * Minecraft version names mapped to resource pack formats, so a spec can say `1.21.4..26.2` instead of
- * `46..88`.
+ * Minecraft version names mapped to resource pack formats, so a spec can say `1.21.4..26.3` instead of
+ * `46..97`.
  *
  * The table lists releases only, and only from format 15 up, because 15 is the lowest a multi-version
  * pack may declare. It was derived from the version summary that `misode/mcmeta` publishes, which itself
  * mirrors Mojang's version manifest; the numbers are facts about the game and are stated here rather than
- * fetched so the tool works offline. Snapshots and pre-releases move too fast to hard-code — pass their
- * format number directly.
+ * fetched so the tool works offline. For snapshots and pre-releases, pass their format number directly.
  */
 object PackFormats {
     private val RELEASES: Map<String, Int> = linkedMapOf(
@@ -37,6 +34,8 @@ object PackFormats {
         "26.1.1" to 84,
         "26.1.2" to 84,
         "26.2" to 88,
+        "26.2.1" to 88,
+        "26.3" to 97,
     )
 
     val newestRelease: String = RELEASES.keys.last()
@@ -48,13 +47,13 @@ object PackFormats {
         )
 
     /**
-     * Parses `1.21.4..26.2`, `26.2`, `46..88`, `88` or `97.1` into the two ends of a range. A bare major
+     * Parses `1.21.4..26.3`, `26.3`, `46..97`, `97` or `97.1` into the two ends of a range. A bare major
      * is left without a minor on purpose: the client reads a missing minor as 0 in `min_format` and as
      * "any" in `max_format`, which is what a pack normally wants.
      */
     fun parseRange(text: String): Pair<PackFormat, PackFormat> {
         val parts = text.split("..")
-        if (parts.size > 2) throw IllegalArgumentException("'$text' is not a version range; write '1.21.4..26.2'")
+        if (parts.size > 2) throw IllegalArgumentException("'$text' is not a version range; write '1.21.4..26.3'")
         val min = parseOne(parts[0].trim())
         val max = if (parts.size == 2) parseOne(parts[1].trim()) else min
         return min to max
@@ -63,7 +62,6 @@ object PackFormats {
     private fun parseOne(text: String): PackFormat {
         if (text.isEmpty()) throw IllegalArgumentException("A version range cannot have an empty end")
         RELEASES[text]?.let { return PackFormat(it) }
-        // A number is a pack format, not a version: `88` and `97.1` are formats, `1.21.4` is a version.
         val numeric = text.split(".")
         if (numeric.size <= 2 && numeric.all { part -> part.toIntOrNull() != null }) {
             val major = numeric[0].toInt()

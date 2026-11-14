@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>packmerge v0.3.0 | Multi-Pack Conflict Matrix &amp; Resource Pack Compiler</title>
+  <meta name="description" content="Zero-upload browser resource pack conflict matrix, Minecraft 1.20.1 to 26.3 item definition &amp; font merger, deterministic SHA-1 ZIP compiler, and OASIS SARIF v2.1.0 generator.">
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --panel: #111827;
+      --panel-alt: #0f1623;
+      --border: #1f2937;
+      --border-hi: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dim: rgba(56, 189, 248, 0.14);
+      --green: #34d399;
+      --green-dim: rgba(52, 211, 153, 0.14);
+      --amber: #fbbf24;
+      --amber-dim: rgba(251, 191, 36, 0.14);
+      --red: #f87171;
+      --red-dim: rgba(248, 113, 113, 0.14);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: 1260px; margin: 0 auto; padding: 24px 20px 64px; }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 22px;
+      font-family: var(--mono);
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-ver {
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+    }
+    .brand p { margin: 6px 0 0; color: var(--muted); max-width: 760px; }
+    .nav-links { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid var(--border-hi);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 13px;
+      font-family: var(--sans);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn:hover { background: #283548; border-color: var(--accent); text-decoration: none; }
+    .btn-primary {
+      background: #0284c7;
+      border-color: #38bdf8;
+      color: #fff;
+      font-weight: 600;
+    }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-sm { padding: 3px 8px; font-size: 12px; font-family: var(--mono); }
+    .grid-top {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    @media (max-width: 960px) { .grid-top { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .dropzone {
+      border: 1px dashed var(--border-hi);
+      border-radius: 6px;
+      padding: 16px;
+      text-align: center;
+      background: var(--panel-alt);
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: border-color 0.15s;
+    }
+    .dropzone:hover, .dropzone.drag { border-color: var(--accent); }
+    .dropzone strong { display: block; margin-bottom: 4px; color: var(--text); }
+    .dropzone span { font-size: 12px; color: var(--muted); }
+    .pack-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .pack-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+    .pack-meta { min-width: 0; }
+    .pack-name { font-family: var(--mono); font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pack-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+    .pack-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .controls-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+    .input-inline {
+      background: var(--panel-alt);
+      border: 1px solid var(--border-hi);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 6px 9px;
+      font-family: var(--mono);
+      font-size: 12px;
+      width: 140px;
+    }
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .stat {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat-val { font-family: var(--mono); font-size: 18px; font-weight: 700; margin-top: 2px; }
+    .sha-box {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .pill {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill-err { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248, 113, 113, 0.3); }
+    .pill-warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(251, 191, 36, 0.3); }
+    .pill-ok { background: var(--green-dim); color: var(--green); border: 1px solid rgba(52, 211, 153, 0.3); }
+    .pill-info { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(56, 189, 248, 0.3); }
+    .matrix-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); background: var(--panel-alt); }
+    tr.selectable { cursor: pointer; }
+    tr.selectable:hover { background: rgba(56, 189, 248, 0.06); }
+    tr.selected { background: rgba(56, 189, 248, 0.12); }
+    .mono { font-family: var(--mono); font-size: 12px; }
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+    @media (max-width: 960px) { .grid-bottom { grid-template-columns: 1fr; } }
+    .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+    .tab {
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      font-family: var(--mono);
+      cursor: pointer;
+    }
+    .tab.active { color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
+    pre {
+      margin: 0;
+      padding: 12px;
+      background: #070a10;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 12px;
+      overflow: auto;
+      max-height: 430px;
+      color: #cbd5e1;
+    }
+    .issue-list { display: flex; flex-direction: column; gap: 8px; max-height: 430px; overflow: auto; }
+    .issue-row {
+      padding: 9px 11px;
+      border-radius: 6px;
+      background: var(--panel-alt);
+      border: 1px solid var(--border);
+    }
+    .issue-head { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+    .issue-msg { color: #cbd5e1; font-size: 12.5px; }
+    footer {
+      margin-top: 36px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>packmerge <span class="badge-ver">v0.3.0</span></h1>
+      <p>Client-side Minecraft resource pack conflict matrix, 1.20.1 to 26.3 (format 97) item definition &amp; overlay compiler, deterministic SHA-1 ZIP builder, and OASIS SARIF v2.1.0 auditor. Zero uploads; every byte stays in your browser.</p>
+    </div>
+    <div class="nav-links">
+      <button class="btn" id="btnLoadDemo" type="button">Load 3-Pack Demo Stack</button>
+      <a class="btn" href="https://github.com/SalyyS1/packmerge">GitHub Repository</a>
+      <a class="btn btn-primary" href="https://github.com/SalyyS1/packmerge/releases/latest">Download CLI JAR</a>
+    </div>
+  </header>
+
+  <div class="grid-top">
+    <section class="card">
+      <h2>
+        <span>Pack Stack Order (Lowest Priority First)</span>
+        <span class="mono" id="packCountLabel">0 packs</span>
+      </h2>
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept=".zip" multiple hidden>
+        <strong>Drop 2+ Resource Pack .zip Archives Here</strong>
+        <span>or click to browse local .zip packs (parsed locally via Web Streams)</span>
+      </label>
+      <div class="pack-list" id="packList"></div>
+      <div class="controls-row">
+        <label class="mono" for="versionOverride" style="color:var(--muted)">--versions:</label>
+        <input class="input-inline" id="versionOverride" type="text" placeholder="auto (intersection)">
+        <button class="btn btn-sm" id="btnClearPacks" type="button">Clear</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>
+        <span>Compiled Output Summary</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" id="btnDownloadSarif" type="button">Export SARIF v2.1.0</button>
+          <button class="btn btn-sm btn-primary" id="btnDownloadZip" type="button">Download Merged .zip</button>
+        </div>
+      </h2>
+      <div class="stats-bar">
+        <div class="stat">
+          <div class="stat-label">Merged Files</div>
+          <div class="stat-val" id="statFiles">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">pack.mcmeta Range</div>
+          <div class="stat-val" id="statRange">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Errors (Collisions)</div>
+          <div class="stat-val" style="color:var(--red)" id="statErrors">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Warnings</div>
+          <div class="stat-val" style="color:var(--amber)" id="statWarnings">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Stacked / Chained</div>
+          <div class="stat-val" style="color:var(--green)" id="statCombined">0</div>
+        </div>
+      </div>
+      <div class="sha-box">
+        <div>
+          <span style="color:var(--muted)">server.properties: </span>
+          <span id="sha1Output">resource-pack-sha1=(load at least 2 packs)</span>
+        </div>
+        <button class="btn btn-sm" id="btnCopySha1" type="button">Copy SHA-1 Line</button>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">
+        Supports 1.21.4+ <span class="mono">items/*.json</span> (<span class="mono">range_dispatch</span> threshold union, <span class="mono">select</span> string union with duplicate <span class="mono">when</span> pruning, and hybrid <span class="mono">select -&gt; range_dispatch</span> fallback chaining), <span class="mono">overlays.entries</span> directory asset merging, <span class="mono">font/*.json</span> codepoint collision detection, and dual-era 1.20.1..26.3 <span class="mono">pack.mcmeta</span> synthesis.
+      </div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>
+      <span>Multi-Pack Asset Conflict &amp; Merge Matrix</span>
+      <span class="mono" style="font-size:11px;text-transform:none" id="matrixHint">Click any row to inspect its compiled output</span>
+    </h2>
+    <div class="matrix-wrap">
+      <table id="matrixTable">
+        <thead id="matrixHead"></thead>
+        <tbody id="matrixBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="grid-bottom">
+    <section class="card">
+      <h2><span>Diagnostics (PM001..PM012)</span><span class="mono" id="diagCount">0 issues</span></h2>
+      <div class="issue-list" id="issueList"></div>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="file" type="button">Selected File Preview</button>
+        <button class="tab" data-tab="sarif" type="button">OASIS SARIF v2.1.0</button>
+        <button class="tab" data-tab="json" type="button">CLI --json Report</button>
+      </div>
+      <pre id="codePreview">Select a file from the matrix above to inspect its compiled content.</pre>
+    </section>
+  </div>
+
+  <footer>
+    <div>packmerge v0.3.0 by <a href="https://github.com/SalyyS1">Salyvn (SalyyS1)</a>. Apache-2.0 License.</div>
+    <div>Part of the Minecraft Engineering Suite: <a href="https://salyys1.github.io/glyphsmith/">glyphsmith</a> | <a href="https://salyys1.github.io/shadersmith/">shadersmith</a> | <a href="https://salyys1.github.io/foliascan/">foliascan</a> | <a href="https://salyys1.github.io/pluginscope/">pluginscope</a> | <a href="https://salyys1.github.io/serverdoctor/">serverdoctor</a></div>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const RELEASES = {
+    "1.20": 15, "1.20.1": 15, "1.20.2": 18, "1.20.3": 22, "1.20.4": 22,
+    "1.20.5": 32, "1.20.6": 32, "1.21": 34, "1.21.1": 34, "1.21.2": 42,
+    "1.21.3": 42, "1.21.4": 46, "1.21.5": 55, "1.21.6": 63, "1.21.7": 64,
+    "1.21.8": 64, "1.21.9": 69, "1.21.10": 69, "1.21.11": 75, "26.1": 84,
+    "26.1.1": 84, "26.1.2": 84, "26.2": 88, "26.2.1": 88, "26.3": 97
+  };
+
+  const RULES = {
+    PM001: { name: "FontCodepointCollision", level: "error", short: "Font codepoint claimed by multiple resource packs" },
+    PM002: { name: "LegacyOverrideCollision", level: "error", short: "Legacy item model override predicate collision" },
+    PM003: { name: "ItemDefinitionCollision", level: "error", short: "Item definition custom_model_data dispatch collision" },
+    PM004: { name: "UnmergeableAssetJson", level: "error", short: "Malformed or structurally incompatible JSON asset" },
+    PM005: { name: "IncompatiblePackFormats", level: "error", short: "Input resource packs declare disjoint pack format ranges" },
+    PM006: { name: "SingleOwnerOverwrite", level: "warning", short: "Single-owner asset overwritten by higher-priority pack" },
+    PM007: { name: "SoundEventOverwrite", level: "warning", short: "Sound event key redefined across packs" },
+    PM008: { name: "ModelPropertyConflict", level: "warning", short: "Item model base or dispatch property disagreement" },
+    PM009: { name: "InvalidOverlayDirectory", level: "error", short: "Invalid overlay directory identifier in pack.mcmeta" },
+    PM010: { name: "OverlayFormatConflict", level: "warning", short: "Conflicting format bounds for shared overlay directory" },
+    PM011: { name: "AdditiveMergeSummary", level: "note", short: "Additive resource merge summary" },
+    PM012: { name: "PackFormatNote", level: "note", short: "Pack format reconciliation or coverage note" }
+  };
+
+  const enc = new TextEncoder();
+  const dec = new TextDecoder("utf-8", { fatal: false });
+
+  let state = {
+    packs: [],
+    plan: null,
+    zipBytes: null,
+    zipSha1: "",
+    selectedPath: "pack.mcmeta",
+    activeTab: "file"
+  };
+
+  function fmtStr(f) {
+    if (!f) return "?";
+    return f.minor == null ? String(f.major) : `${f.major}.${f.minor}`;
+  }
+  function fmtJson(f) {
+    return f.minor == null ? f.major : [f.major, f.minor];
+  }
+  function cmpMin(a, b) {
+    if (a.major !== b.major) return a.major - b.major;
+    return (a.minor ?? 0) - (b.minor ?? 0);
+  }
+  function cmpMax(a, b) {
+    if (a.major !== b.major) return a.major - b.major;
+    return (a.minor ?? 0x7fffffff) - (b.minor ?? 0x7fffffff);
+  }
+  function validRange(min, max) {
+    if (min.major !== max.major) return min.major < max.major;
+    return (min.minor ?? 0) <= (max.minor ?? 0x7fffffff);
+  }
+
+  function parseFmtToken(tok) {
+    const t = tok.trim();
+    if (!t) throw new Error("Empty format token");
+    if (RELEASES[t] != null) return { major: RELEASES[t], minor: null };
+    const parts = t.split(".");
+    if (parts.length <= 2 && parts.every(p => /^\d+$/.test(p))) {
+      const maj = parseInt(parts[0], 10);
+      const min = parts.length === 2 ? parseInt(parts[1], 10) : null;
+      if (parts.length === 1 || maj >= 65) return { major: maj, minor: min };
+    }
+    throw new Error(`Unknown version or format '${t}'`);
+  }
+
+  function parseRangeOverride(raw) {
+    const s = raw.trim();
+    if (!s) return null;
+    const parts = s.split("..");
+    if (parts.length > 2) throw new Error("Range must look like 1.21.4..26.3");
+    const min = parseFmtToken(parts[0]);
+    const max = parts.length === 2 ? parseFmtToken(parts[1]) : min;
+    return { min, max };
+  }
+
+  function parseMcmetaFormat(el) {
+    if (typeof el === "number" && Number.isInteger(el)) return { major: el, minor: null };
+    if (Array.isArray(el) && typeof el[0] === "number") {
+      return { major: el[0], minor: typeof el[1] === "number" ? el[1] : null };
+    }
+    return null;
+  }
+
+  function parseLegacyBounds(sup) {
+    if (typeof sup === "number") return [sup, sup];
+    if (Array.isArray(sup) && sup.length >= 1) return [sup[0], sup[sup.length - 1]];
+    if (sup && typeof sup === "object") return [sup.min_inclusive ?? null, sup.max_inclusive ?? null];
+    return [null, null];
+  }
+
+  function readDeclaredRange(pack) {
+    const raw = pack.files.get("pack.mcmeta");
+    if (!raw) return null;
+    try {
+      const root = JSON.parse(dec.decode(raw));
+      const p = root.pack || {};
+      const [supMin, supMax] = parseLegacyBounds(p.supported_formats);
+      const min = parseMcmetaFormat(p.min_format)
+        || (typeof supMin === "number" ? { major: supMin, minor: null } : null)
+        || (typeof p.pack_format === "number" ? { major: p.pack_format, minor: null } : null);
+      const max = parseMcmetaFormat(p.max_format)
+        || (typeof supMax === "number" ? { major: supMax, minor: null } : null);
+      const overlays = [];
+      if (root.overlays && Array.isArray(root.overlays.entries)) {
+        for (const ov of root.overlays.entries) {
+          if (!ov || typeof ov.directory !== "string") continue;
+          const [lMin, lMax] = parseLegacyBounds(ov.formats);
+          const oMin = parseMcmetaFormat(ov.min_format) || (typeof lMin === "number" ? { major: lMin, minor: null } : null);
+          const oMax = parseMcmetaFormat(ov.max_format) || (typeof lMax === "number" ? { major: lMax, minor: null } : null) || oMin;
+          overlays.push({ pack: pack.name, directory: ov.directory, min: oMin, max: oMax });
+        }
+      }
+      return { pack: pack.name, min, max, description: typeof p.description === "string" ? p.description : null, overlays };
+    } catch (_) {
+      return { pack: pack.name, min: null, max: null, description: null, overlays: [] };
+    }
+  }
+
+  function classifyPath(rel, overlayDirs) {
+    if (rel === "pack.mcmeta") return "PACK_META";
+    const raw = rel.split("/");
+    const parts = (raw.length >= 4 && overlayDirs.has(raw[0]) && raw[1] === "assets") ? raw.slice(1) : raw;
+    if (parts.length < 3 || parts[0] !== "assets") return "SINGLE_OWNER";
+    const what = parts[2];
+    const isJson = rel.endsWith(".json");
+    if (what === "font" && isJson) return "FONT";
+    if (what === "sounds.json") return "SOUNDS";
+    if (what === "lang" && isJson) return "LANG";
+    if (what === "atlases" && isJson) return "ATLAS";
+    if (what === "models" && isJson) return "LEGACY_MODEL";
+    if (what === "items" && isJson) return "ITEM_DEFINITION";
+    return "SINGLE_OWNER";
+  }
+
+  function bytesEqual(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  function codepointsOfProvider(prov) {
+    if (!prov || typeof prov !== "object") return null;
+    const t = String(prov.type || "").replace(/^minecraft:/, "");
+    if (t === "bitmap" && Array.isArray(prov.chars)) {
+      const out = new Set();
+      for (const row of prov.chars) {
+        if (typeof row !== "string") continue;
+        for (const ch of row) {
+          const cp = ch.codePointAt(0);
+          if (cp !== 0) out.add(cp);
+        }
+      }
+      return out;
+    }
+    if (t === "space" && prov.advances && typeof prov.advances === "object") {
+      const out = new Set();
+      for (const k of Object.keys(prov.advances)) {
+        if (k.length > 0) out.add(k.codePointAt(0));
+      }
+      return out;
+    }
+    return null;
+  }
+
+  function mergeFont(rel, sources, issues) {
+    const providers = [];
+    const claims = new Map();
+    let opaque = 0;
+    for (const src of sources) {
+      let root;
+      try { root = JSON.parse(dec.decode(src.files.get(rel))); }
+      catch (e) { issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} has invalid font JSON: ${e.message}` }); continue; }
+      if (!Array.isArray(root.providers)) {
+        issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} has no providers array.` });
+        continue;
+      }
+      for (const p of root.providers) {
+        providers.push(p);
+        const cps = codepointsOfProvider(p);
+        if (cps === null) opaque++;
+        else for (const cp of cps) {
+          if (!claims.has(cp)) claims.set(cp, []);
+          claims.get(cp).push(src.name);
+        }
+      }
+    }
+    if (!providers.length) return null;
+    for (const [cp, holders] of claims.entries()) {
+      const uniq = [...new Set(holders)];
+      if (uniq.length > 1) {
+        const hex = cp.toString(16).toUpperCase().padStart(4, "0");
+        issues.push({
+          rule: "PM001", level: "error", path: rel,
+          message: `U+${hex} is claimed by ${uniq.join(" and ")}. Only one glyph can render there; the other is silently unreachable.`
+        });
+      }
+    }
+    if (opaque > 0) {
+      issues.push({ rule: "PM012", level: "note", path: rel, message: `${opaque} provider(s) are reference, ttf or unihex and are kept in pack order.` });
+    }
+    issues.push({ rule: "PM011", level: "note", path: rel, message: `${providers.length} providers concatenated from ${sources.length} packs.` });
+    return enc.encode(JSON.stringify({ providers }, null, 2) + "\n");
+  }
+
+  function mergeObjects(rel, sources, issues, level, conflictRule) {
+    const merged = {};
+    const owner = {};
+    const replaced = [];
+    for (const src of sources) {
+      let root;
+      try { root = JSON.parse(dec.decode(src.files.get(rel))); }
+      catch (e) { issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} invalid JSON: ${e.message}` }); continue; }
+      for (const [k, v] of Object.entries(root)) {
+        if (Object.prototype.hasOwnProperty.call(merged, k) && JSON.stringify(merged[k]) !== JSON.stringify(v)) {
+          replaced.push(`${k} (${owner[k]} -> ${src.name})`);
+        }
+        merged[k] = v;
+        owner[k] = src.name;
+      }
+    }
+    const keys = Object.keys(merged);
+    if (!keys.length) return null;
+    if (replaced.length) {
+      const shown = replaced.slice(0, 6).join(", ") + (replaced.length > 6 ? `, and ${replaced.length - 6} more` : "");
+      issues.push({
+        rule: level === "note" ? "PM011" : conflictRule,
+        level, path: rel,
+        message: `${replaced.length} key(s) are defined differently by more than one pack; the later pack's value is kept: ${shown}`
+      });
+    }
+    issues.push({ rule: "PM011", level: "note", path: rel, message: `${keys.length} key(s) from ${sources.length} packs.` });
+    return enc.encode(JSON.stringify(merged, null, 2) + "\n");
+  }
+
+  function mergeAtlas(rel, sources, issues) {
+    const items = [];
+    for (const src of sources) {
+      let root;
+      try { root = JSON.parse(dec.decode(src.files.get(rel))); }
+      catch (e) { issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} invalid JSON: ${e.message}` }); continue; }
+      if (!Array.isArray(root.sources)) {
+        issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} has no sources list.` });
+        continue;
+      }
+      items.push(...root.sources);
+    }
+    if (!items.length) return null;
+    issues.push({ rule: "PM011", level: "note", path: rel, message: `${items.length} sources entries concatenated from ${sources.length} packs.` });
+    return enc.encode(JSON.stringify({ sources: items }, null, 2) + "\n");
+  }
+
+  function mergeLegacyModel(rel, sources, issues) {
+    const parsed = [];
+    for (const src of sources) {
+      try { parsed.push([src, JSON.parse(dec.decode(src.files.get(rel)))]); }
+      catch (e) { issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} invalid JSON: ${e.message}` }); }
+    }
+    if (parsed.length < 2) return null;
+    if (parsed.some(([, r]) => !Array.isArray(r.overrides))) {
+      issues.push({ rule: "PM008", level: "warning", path: rel, message: "Not every pack's copy has an overrides list, so there is no table to union." });
+      return null;
+    }
+    const overrides = [];
+    const claims = new Map();
+    for (const [src, r] of parsed) {
+      for (const ov of r.overrides) {
+        overrides.push(ov);
+        if (ov && ov.predicate && typeof ov.predicate === "object") {
+          const pred = Object.keys(ov.predicate).sort().map(k => `${k}=${ov.predicate[k]}`).join(", ");
+          if (!claims.has(pred)) claims.set(pred, []);
+          claims.get(pred).push([src.name, ov.model || "?"]);
+        }
+      }
+    }
+    for (const [pred, holders] of claims.entries()) {
+      const packs = [...new Set(holders.map(h => h[0]))];
+      if (packs.length > 1) {
+        const winner = holders[holders.length - 1];
+        issues.push({
+          rule: "PM002", level: "error", path: rel,
+          message: `${pred} is claimed by ${holders.map(([p, m]) => `${p} (${m})`).join(" and ")}. Only ${winner[1]} renders; the other item is invisible.`
+        });
+      }
+    }
+    const base = { ...parsed[parsed.length - 1][1], overrides };
+    issues.push({ rule: "PM011", level: "note", path: rel, message: `${overrides.length} overrides unioned from ${parsed.length} packs.` });
+    return enc.encode(JSON.stringify(base, null, 2) + "\n");
+  }
+
+  function mergeItemDefinition(rel, sources, issues) {
+    const parsed = [];
+    for (const src of sources) {
+      try { parsed.push([src, JSON.parse(dec.decode(src.files.get(rel)))]); }
+      catch (e) { issues.push({ rule: "PM004", level: "error", path: rel, message: `${src.name} invalid JSON: ${e.message}` }); }
+    }
+    if (parsed.length < 2) return null;
+
+    const rangePacks = [];
+    const selectPacks = [];
+    const bad = [];
+    for (const [src, root] of parsed) {
+      const m = root.model || {};
+      const type = String(m.type || "").replace(/^minecraft:/, "");
+      const prop = String(m.property || "").replace(/^minecraft:/, "");
+      if (type === "range_dispatch" && prop === "custom_model_data") rangePacks.push([src, root]);
+      else if (type === "select" && prop === "custom_model_data") selectPacks.push([src, root]);
+      else bad.push(src.name);
+    }
+    if (bad.length) {
+      issues.push({
+        rule: "PM004", level: "error", path: rel,
+        message: `${bad.join(" and ")} does not put a custom_model_data range_dispatch or select at the root; ${parsed[parsed.length - 1][0].name}'s file is written.`
+      });
+      return null;
+    }
+
+    let rangeModel = null;
+    if (rangePacks.length) {
+      const byThresh = new Map();
+      for (const [src, root] of rangePacks) {
+        for (const entry of (root.model.entries || [])) {
+          const t = Number(entry.threshold);
+          if (Number.isNaN(t)) continue;
+          if (byThresh.has(t) && JSON.stringify(byThresh.get(t)[1]) !== JSON.stringify(entry)) {
+            issues.push({
+              rule: "PM003", level: "error", path: rel,
+              message: `custom_model_data ${t} is claimed by both ${byThresh.get(t)[0]} and ${src.name}. Only ${src.name}'s model renders; the other item is invisible.`
+            });
+          }
+          byThresh.set(t, [src.name, entry]);
+        }
+      }
+      const sorted = [...byThresh.entries()].sort((a, b) => a[0] - b[0]).map(e => e[1][1]);
+      rangeModel = { ...rangePacks[rangePacks.length - 1][1].model, entries: sorted };
+      if (rangePacks.length > 1) {
+        issues.push({ rule: "PM011", level: "note", path: rel, message: `${sorted.length} custom_model_data entries unioned from ${rangePacks.length} packs.` });
+      }
+    }
+
+    let selectModel = null;
+    if (selectPacks.length) {
+      const specs = [];
+      const keyOwner = new Map();
+      for (const [src, root] of selectPacks) {
+        for (const c of (root.model.cases || [])) {
+          const rawKeys = Array.isArray(c.when) ? c.when.map(String) : (typeof c.when === "string" ? [c.when] : []);
+          if (!rawKeys.length || !c.model) continue;
+          for (const k of rawKeys) {
+            if (keyOwner.has(k)) {
+              const prev = keyOwner.get(k);
+              if (prev[0] !== src.name && JSON.stringify(prev[1]) !== JSON.stringify(c.model)) {
+                issues.push({
+                  rule: "PM003", level: "error", path: rel,
+                  message: `custom_model_data '${k}' is claimed by both ${prev[0]} and ${src.name}. Only ${src.name}'s model renders; the other item is invisible.`
+                });
+              }
+              for (const existing of specs) existing.keys = existing.keys.filter(x => x !== k);
+            }
+            keyOwner.set(k, [src.name, c.model]);
+          }
+          specs.push({ keys: [...new Set(rawKeys)], wasArray: Array.isArray(c.when), model: c.model });
+        }
+      }
+      const cases = specs.filter(s => s.keys.length > 0).map(s => ({
+        when: (!s.wasArray && s.keys.length === 1) ? s.keys[0] : s.keys,
+        model: s.model
+      }));
+      selectModel = { ...selectPacks[selectPacks.length - 1][1].model, cases };
+      if (rangeModel) selectModel.fallback = rangeModel;
+      if (selectPacks.length > 1) {
+        issues.push({ rule: "PM011", level: "note", path: rel, message: `${keyOwner.size} custom_model_data select case(s) unioned from ${selectPacks.length} packs.` });
+      }
+    }
+
+    if (selectModel && rangeModel) {
+      issues.push({
+        rule: "PM011", level: "note", path: rel,
+        message: `Chained custom_model_data select (${selectPacks.map(p => p[0].name).join(", ")}) into range_dispatch fallback (${rangePacks.map(p => p[0].name).join(", ")}).`
+      });
+    }
+
+    const outRoot = { ...parsed[parsed.length - 1][1], model: selectModel || rangeModel };
+    const oversizedVals = parsed.filter(([, r]) => typeof r.oversized_in_gui === "boolean").map(([, r]) => r.oversized_in_gui);
+    if (new Set(oversizedVals).size > 1) {
+      issues.push({ rule: "PM008", level: "warning", path: rel, message: "The packs disagree about oversized_in_gui; enabling oversized_in_gui=true so oversized custom models are not clipped." });
+      outRoot.oversized_in_gui = true;
+    } else if (oversizedVals.includes(true)) {
+      outRoot.oversized_in_gui = true;
+    }
+    return enc.encode(JSON.stringify(outRoot, null, 2) + "\n");
+  }
+
+  function buildMcmeta(description, min, max, overlays) {
+    const pack = { description };
+    if (min.major > 64) {
+      pack.min_format = fmtJson(min);
+      pack.max_format = fmtJson(max);
+    } else {
+      pack.pack_format = min.major;
+      pack.supported_formats = [min.major, Math.min(max.major, 64)];
+      pack.min_format = fmtJson(min);
+      pack.max_format = fmtJson(max);
+    }
+    const root = { pack };
+    if (overlays.length > 0) {
+      root.overlays = {
+        entries: overlays.map(ov => {
+          const item = {};
+          if (ov.min.major <= 64) item.formats = [ov.min.major, Math.min(ov.max.major, 64)];
+          item.min_format = fmtJson(ov.min);
+          item.max_format = fmtJson(ov.max);
+          item.directory = ov.directory;
+          return item;
+        })
+      };
+    }
+    return enc.encode(JSON.stringify(root, null, 2) + "\n");
+  }
+
+  function runMergePlan(packs, versionSpec) {
+    const issues = [];
+    const declared = packs.map(readDeclaredRange).filter(Boolean);
+    let min = { major: 46, minor: null };
+    let max = { major: 97, minor: null };
+
+    const override = parseRangeOverride(versionSpec || "");
+    if (override) {
+      min = override.min;
+      max = override.max;
+    } else {
+      const withMin = declared.filter(d => d.min);
+      if (withMin.length) {
+        const floor = withMin.reduce((a, b) => cmpMin(a.min, b.min) >= 0 ? a : b);
+        min = floor.min;
+        const withMax = declared.filter(d => d.max);
+        const ceil = withMax.length ? withMax.reduce((a, b) => cmpMax(a.max, b.max) <= 0 ? a : b) : null;
+        max = ceil ? ceil.max : (validRange(min, { major: 97, minor: null }) ? { major: 97, minor: null } : min);
+        for (const b of withMin) {
+          if (cmpMin(b.min, min) < 0) {
+            issues.push({
+              rule: "PM012", level: "note", path: "pack.mcmeta",
+              message: `${b.pack} claims from format ${fmtStr(b.min)} but ${floor.pack} needs ${fmtStr(min)}, so the merged pack starts at ${fmtStr(min)}.`
+            });
+          }
+        }
+        if (!validRange(min, max)) {
+          issues.push({
+            rule: "PM005", level: "error", path: "pack.mcmeta",
+            message: `The packs do not share a version (${declared.map(d => `${d.pack} ${fmtStr(d.min)}..${fmtStr(d.max)}`).join(", ")}).`
+          });
+          const last = declared[declared.length - 1];
+          min = last.min || min;
+          max = (last.max && validRange(min, last.max)) ? last.max : min;
+        }
+      }
+    }
+
+    // Reconcile overlays
+    const ovGroups = new Map();
+    for (const d of declared) {
+      for (const ov of d.overlays) {
+        if (!/^[a-z0-9_-]+$/.test(ov.directory)) {
+          issues.push({ rule: "PM009", level: "error", path: "pack.mcmeta", message: `${ov.pack} declares invalid overlay directory '${ov.directory}'; must match [a-z0-9_-]+.` });
+          continue;
+        }
+        if (!ovGroups.has(ov.directory)) ovGroups.set(ov.directory, []);
+        ovGroups.get(ov.directory).push(ov);
+      }
+    }
+    const overlays = [];
+    for (const [dir, list] of ovGroups.entries()) {
+      const wMin = list.filter(x => x.min);
+      if (!wMin.length) continue;
+      const oMin = wMin.reduce((a, b) => cmpMin(a.min, b.min) >= 0 ? a : b).min;
+      const wMax = list.filter(x => x.max);
+      const oMax = wMax.length ? wMax.reduce((a, b) => cmpMax(a.max, b.max) <= 0 ? a : b).max : { major: 97, minor: null };
+      if (!validRange(oMin, oMax)) {
+        const last = list[list.length - 1];
+        issues.push({ rule: "PM010", level: "warning", path: "pack.mcmeta", message: `Overlay '${dir}' has disjoint format bounds across packs; keeping ${last.pack}'s range.` });
+        overlays.push({ directory: dir, min: last.min || oMin, max: last.max || oMin });
+      } else {
+        overlays.push({ directory: dir, min: oMin, max: oMax });
+      }
+    }
+    const overlayDirs = new Set(overlays.map(o => o.directory));
+
+    const owners = new Map();
+    for (const p of packs) {
+      for (const rel of p.files.keys()) {
+        if (!owners.has(rel)) owners.set(rel, []);
+        owners.get(rel).push(p);
+      }
+    }
+
+    const files = [];
+    for (const rel of [...owners.keys()].sort()) {
+      const kind = classifyPath(rel, overlayDirs);
+      if (kind === "PACK_META") continue;
+      const srcs = owners.get(rel);
+      if (srcs.length === 1) {
+        files.push({ relative: rel, bytes: srcs[0].files.get(rel), from: [srcs[0].name], kind, merged: false, strategy: "Copied" });
+        continue;
+      }
+      const allSame = srcs.every(s => bytesEqual(s.files.get(rel), srcs[0].files.get(rel)));
+      if (allSame) {
+        files.push({ relative: rel, bytes: srcs[0].files.get(rel), from: srcs.map(s => s.name), kind, merged: false, strategy: "Byte-Identical" });
+        continue;
+      }
+      let mergedBytes = null;
+      let strategy = "Stacked";
+      if (kind === "FONT") { mergedBytes = mergeFont(rel, srcs, issues); strategy = "Font Providers Stack"; }
+      else if (kind === "SOUNDS") { mergedBytes = mergeObjects(rel, srcs, issues, "warning", "PM007"); strategy = "Sound Key Union"; }
+      else if (kind === "LANG") { mergedBytes = mergeObjects(rel, srcs, issues, "note", "PM011"); strategy = "Lang Key Union"; }
+      else if (kind === "ATLAS") { mergedBytes = mergeAtlas(rel, srcs, issues); strategy = "Atlas Sources Stack"; }
+      else if (kind === "LEGACY_MODEL") { mergedBytes = mergeLegacyModel(rel, srcs, issues); strategy = "Overrides Union"; }
+      else if (kind === "ITEM_DEFINITION") { mergedBytes = mergeItemDefinition(rel, srcs, issues); strategy = "1.21.4+ Dispatch Union"; }
+
+      if (mergedBytes) {
+        files.push({ relative: rel, bytes: mergedBytes, from: srcs.map(s => s.name), kind, merged: true, strategy });
+      } else {
+        const winner = srcs[srcs.length - 1];
+        issues.push({
+          rule: "PM006", level: "warning", path: rel,
+          message: `${srcs.length} packs ship this file with different content and it has one owner; ${winner.name}'s copy is written.`
+        });
+        files.push({ relative: rel, bytes: winner.files.get(rel), from: srcs.map(s => s.name), kind: "SINGLE_OWNER", merged: true, strategy: `Winner: ${winner.name}` });
+      }
+    }
+
+    const desc = (declared.find(d => d.description) || {}).description || "merged pack";
+    files.push({
+      relative: "pack.mcmeta",
+      bytes: buildMcmeta(desc, min, max, overlays),
+      from: packs.map(p => p.name),
+      kind: "PACK_META",
+      merged: true,
+      strategy: overlays.length ? `Reconciled + ${overlays.length} Overlay(s)` : "Reconciled Range"
+    });
+    files.sort((a, b) => a.relative.localeCompare(b.relative));
+
+    const order = { error: 0, warning: 1, note: 2 };
+    issues.sort((a, b) => order[a.level] - order[b.level]);
+
+    return { packs, files, issues, min, max, overlays };
+  }
+
+  // CRC32 + Deterministic Stored ZIP writer (DOS epoch 1980-01-01 00:00:00 => time=0, date=0x0021)
+  const CRC_TABLE = (() => {
+    const t = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[i] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  function buildDeterministicZip(files) {
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+    const sorted = [...files].sort((a, b) => a.relative.localeCompare(b.relative));
+
+    for (const f of sorted) {
+      const nameBytes = enc.encode(f.relative);
+      const data = f.bytes;
+      const crc = crc32(data);
+
+      const lh = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(lh.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true);
+      lv.setUint16(6, 0x0800, true); // UTF-8
+      lv.setUint16(8, 0, true);      // STORED
+      lv.setUint16(10, 0, true);     // 00:00:00
+      lv.setUint16(12, 0x0021, true);// 1980-01-01
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, data.length, true);
+      lv.setUint32(22, data.length, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      lh.set(nameBytes, 30);
+
+      const ch = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, 0x0021, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint32(42, offset, true);
+      ch.set(nameBytes, 46);
+
+      localParts.push(lh, data);
+      centralParts.push(ch);
+      offset += lh.length + data.length;
+    }
+
+    const cdSize = centralParts.reduce((s, p) => s + p.length, 0);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, sorted.length, true);
+    ev.setUint16(10, sorted.length, true);
+    ev.setUint32(12, cdSize, true);
+    ev.setUint32(16, offset, true);
+
+    const total = offset + cdSize + 22;
+    const out = new Uint8Array(total);
+    let pos = 0;
+    for (const p of localParts) { out.set(p, pos); pos += p.length; }
+    for (const p of centralParts) { out.set(p, pos); pos += p.length; }
+    out.set(eocd, pos);
+    return out;
+  }
+
+  async function shaHex(algo, bytes) {
+    const buf = await crypto.subtle.digest(algo, bytes);
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Client-side ZIP reader using Central Directory + DecompressionStream('deflate-raw')
+  async function readZipFile(file) {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const view = new DataView(buf);
+    let eocdPos = -1;
+    for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
+      if (view.getUint32(i, true) === 0x06054b50) { eocdPos = i; break; }
+    }
+    if (eocdPos < 0) throw new Error(`${file.name} is not a valid .zip archive`);
+    const cdCount = view.getUint16(eocdPos + 10, true);
+    let pos = view.getUint32(eocdPos + 16, true);
+    const entries = new Map();
+
+    for (let idx = 0; idx < cdCount; idx++) {
+      if (view.getUint32(pos, true) !== 0x02014b50) break;
+      const method = view.getUint16(pos + 10, true);
+      const compSize = view.getUint32(pos + 20, true);
+      const nameLen = view.getUint16(pos + 28, true);
+      const extraLen = view.getUint16(pos + 30, true);
+      const commentLen = view.getUint16(pos + 32, true);
+      const localOffset = view.getUint32(pos + 42, true);
+      const rawName = dec.decode(bytes.subarray(pos + 46, pos + 46 + nameLen));
+      pos += 46 + nameLen + extraLen + commentLen;
+
+      if (rawName.endsWith("/")) continue;
+      const clean = rawName.replace(/\\/g, "/").replace(/^\/+/, "");
+      if (!clean || clean.split("/").some(s => !s || s === "." || s === "..")) continue;
+
+      const lNameLen = view.getUint16(localOffset + 26, true);
+      const lExtraLen = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + lNameLen + lExtraLen;
+      const slice = bytes.subarray(dataStart, dataStart + compSize);
+
+      if (method === 0) {
+        entries.set(clean, new Uint8Array(slice));
+      } else if (method === 8) {
+        const ds = new DecompressionStream("deflate-raw");
+        const writer = ds.writable.getWriter();
+        writer.write(slice);
+        writer.close();
+        const ab = await new Response(ds.readable).arrayBuffer();
+        entries.set(clean, new Uint8Array(ab));
+      }
+    }
+    return { name: file.name.replace(/\.zip$/i, ""), files: entries };
+  }
+
+  function makePack(name, objMap) {
+    const m = new Map();
+    for (const [k, v] of Object.entries(objMap)) {
+      m.set(k, enc.encode(typeof v === "string" ? v : JSON.stringify(v, null, 2) + "\n"));
+    }
+    return { name, files: m };
+  }
+
+  function loadDemoStack() {
+    state.packs = [
+      makePack("oraxen-items", {
+        "pack.mcmeta": {
+          pack: { description: "Oraxen Custom Items", pack_format: 46, supported_formats: [46, 64], min_format: 46, max_format: 97 }
+        },
+        "assets/minecraft/items/paper.json": {
+          model: {
+            type: "minecraft:range_dispatch",
+            property: "minecraft:custom_model_data",
+            entries: [
+              { threshold: 1001, model: { type: "minecraft:model", model: "oraxen:item/ruby_scroll" } },
+              { threshold: 1002, model: { type: "minecraft:model", model: "oraxen:item/ancient_tome" } }
+            ],
+            fallback: { type: "minecraft:model", model: "minecraft:item/paper" }
+          }
+        },
+        "assets/minecraft/items/bow.json": {
+          model: {
+            type: "minecraft:range_dispatch",
+            property: "minecraft:custom_model_data",
+            entries: [{ threshold: 1, model: { type: "minecraft:model", model: "oraxen:item/elven_bow" } }],
+            fallback: { type: "minecraft:model", model: "minecraft:item/bow" }
+          }
+        },
+        "assets/minecraft/font/default.json": {
+          providers: [
+            { type: "bitmap", file: "oraxen:font/ranks.png", ascent: 7, height: 8, chars: ["\uE001\uF010"] }
+          ]
+        },
+        "assets/minecraft/sounds.json": {
+          "custom.relic_open": { sounds: ["oraxen:relic_open"] },
+          "shared.boss_roar": { sounds: ["oraxen:roar_v1"] }
+        },
+        "assets/minecraft/textures/item/ruby.png": "PNG_ORAXEN_RUBY_V1"
+      }),
+      makePack("nexo-26-3", {
+        "pack.mcmeta": {
+          pack: { description: "Nexo 26.3 Arsenal", min_format: 69, max_format: [97, 1] },
+          overlays: { entries: [{ directory: "v26_3", min_format: 97, max_format: [97, 1] }] }
+        },
+        "assets/minecraft/items/paper.json": {
+          oversized_in_gui: true,
+          model: {
+            type: "minecraft:select",
+            property: "minecraft:custom_model_data",
+            cases: [
+              { when: "dragon_sigil", model: { type: "minecraft:model", model: "nexo:item/dragon_sigil" } },
+              { when: ["void_ticket", "abyss_ticket"], model: { type: "minecraft:model", model: "nexo:item/ticket" } }
+            ],
+            fallback: { type: "minecraft:model", model: "minecraft:item/paper" }
+          }
+        },
+        "assets/minecraft/items/bow.json": {
+          model: {
+            type: "minecraft:range_dispatch",
+            property: "minecraft:custom_model_data",
+            entries: [
+              { threshold: 1, model: { type: "minecraft:model", model: "nexo:item/stormbow" } },
+              { threshold: 9, model: { type: "minecraft:model", model: "nexo:item/voidbow" } }
+            ],
+            fallback: { type: "minecraft:model", model: "minecraft:item/bow" }
+          }
+        },
+        "assets/minecraft/font/default.json": {
+          providers: [
+            { type: "bitmap", file: "nexo:font/badges.png", ascent: 7, height: 8, chars: ["\uF010\uF021"] }
+          ]
+        },
+        "v26_3/assets/minecraft/lang/en_us.json": { "item.nexo.dragon_sigil": "Dragon Sigil (26.3)" },
+        "assets/minecraft/textures/item/ruby.png": "PNG_NEXO_RUBY_HD_V2"
+      }),
+      makePack("hud-bars", {
+        "pack.mcmeta": {
+          pack: { description: "BossBar & Mana HUD", min_format: 69, max_format: 97 },
+          overlays: { entries: [{ directory: "v26_3", min_format: 97, max_format: 97 }] }
+        },
+        "assets/minecraft/font/default.json": {
+          providers: [
+            { type: "space", advances: { "\uF801": -1, "\uF808": -8 } },
+            { type: "bitmap", file: "hud:font/mana.png", ascent: 8, height: 9, chars: ["\uE100\uE101"] }
+          ]
+        },
+        "assets/minecraft/sounds.json": {
+          "hud.mana_full": { sounds: ["hud:chime"] },
+          "shared.boss_roar": { sounds: ["hud:roar_remastered"] }
+        },
+        "assets/minecraft/atlases/blocks.json": {
+          sources: [{ type: "directory", source: "hud_icons", prefix: "hud_icons/" }]
+        },
+        "v26_3/assets/minecraft/lang/en_us.json": { "hud.mana.label": "Arcane Pool" }
+      })
+    ];
+    state.selectedPath = "assets/minecraft/items/paper.json";
+    recompute();
+  }
+
+  function renderSarif(plan) {
+    return JSON.stringify({
+      $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+      version: "2.1.0",
+      runs: [{
+        tool: {
+          driver: {
+            name: "packmerge",
+            version: "0.3.0",
+            informationUri: "https://github.com/SalyyS1/packmerge",
+            rules: Object.entries(RULES).map(([id, r]) => ({
+              id, name: r.name,
+              shortDescription: { text: r.short },
+              defaultConfiguration: { level: r.level }
+            }))
+          }
+        },
+        results: plan.issues.map(iss => ({
+          ruleId: iss.rule,
+          level: iss.level,
+          message: { text: iss.message },
+          locations: [{
+            physicalLocation: {
+              artifactLocation: { uri: iss.path, uriBaseId: "%SRCROOT%" },
+              region: { startLine: 1 }
+            }
+          }]
+        }))
+      }]
+    }, null, 2);
+  }
+
+  function renderCliJson(plan, sha1, sha256) {
+    const combined = {};
+    for (const f of plan.files) {
+      if (f.merged && f.kind !== "PACK_META") {
+        const k = f.kind.toLowerCase();
+        combined[k] = (combined[k] || 0) + 1;
+      }
+    }
+    return JSON.stringify({
+      packs: plan.packs.map(p => ({ name: p.name, fileCount: p.files.size })),
+      zipSha1: sha1,
+      zipSha256: sha256,
+      dryRun: false,
+      fileCount: plan.files.length,
+      minFormat: fmtStr(plan.min),
+      maxFormat: fmtStr(plan.max),
+      overlays: plan.overlays.map(o => ({ directory: o.directory, minFormat: fmtStr(o.min), maxFormat: fmtStr(o.max) })),
+      combinedCounts: combined,
+      errorCount: plan.issues.filter(i => i.level === "error").length,
+      warningCount: plan.issues.filter(i => i.level === "warning").length,
+      noteCount: plan.issues.filter(i => i.level === "note").length,
+      issues: plan.issues
+    }, null, 2);
+  }
+
+  async function recompute() {
+    renderPackList();
+    if (state.packs.length < 2) {
+      state.plan = null;
+      state.zipBytes = null;
+      state.zipSha1 = "";
+      document.getElementById("statFiles").textContent = "0";
+      document.getElementById("statRange").textContent = "-";
+      document.getElementById("statErrors").textContent = "0";
+      document.getElementById("statWarnings").textContent = "0";
+      document.getElementById("statCombined").textContent = "0";
+      document.getElementById("sha1Output").textContent = "resource-pack-sha1=(load at least 2 packs)";
+      document.getElementById("matrixHead").innerHTML = "";
+      document.getElementById("matrixBody").innerHTML = "<tr><td style='color:var(--muted)'>Add at least two .zip resource packs or click 'Load 3-Pack Demo Stack'.</td></tr>";
+      document.getElementById("issueList").innerHTML = "";
+      document.getElementById("diagCount").textContent = "0 issues";
+      document.getElementById("codePreview").textContent = "Add at least two packs to compile.";
+      return;
+    }
+
+    let plan;
+    try {
+      plan = runMergePlan(state.packs, document.getElementById("versionOverride").value);
+    } catch (err) {
+      document.getElementById("sha1Output").textContent = `Error: ${err.message}`;
+      return;
+    }
+    state.plan = plan;
+    state.zipBytes = buildDeterministicZip(plan.files);
+    state.zipSha1 = await shaHex("SHA-1", state.zipBytes);
+    state.zipSha256 = await shaHex("SHA-256", state.zipBytes);
+
+    if (!plan.files.some(f => f.relative === state.selectedPath)) {
+      state.selectedPath = plan.files[0]?.relative || "pack.mcmeta";
+    }
+
+    const errs = plan.issues.filter(i => i.level === "error").length;
+    const warns = plan.issues.filter(i => i.level === "warning").length;
+    const combinedCount = plan.files.filter(f => f.merged && f.kind !== "PACK_META").length;
+
+    document.getElementById("statFiles").textContent = String(plan.files.length);
+    document.getElementById("statRange").textContent = `${fmtStr(plan.min)}..${fmtStr(plan.max)}`;
+    document.getElementById("statErrors").textContent = String(errs);
+    document.getElementById("statWarnings").textContent = String(warns);
+    document.getElementById("statCombined").textContent = String(combinedCount);
+    document.getElementById("sha1Output").textContent = `resource-pack-sha1=${state.zipSha1}`;
+
+    renderMatrix(plan);
+    renderIssues(plan);
+    renderPreview();
+  }
+
+  function renderPackList() {
+    const list = document.getElementById("packList");
+    document.getElementById("packCountLabel").textContent = `${state.packs.length} pack(s)`;
+    list.innerHTML = "";
+    state.packs.forEach((p, idx) => {
+      const el = document.createElement("div");
+      el.className = "pack-item";
+      el.innerHTML = `
+        <div class="pack-meta">
+          <div class="pack-name">#${idx + 1} ${escapeHtml(p.name)}</div>
+          <div class="pack-sub">${p.files.size} file(s)</div>
+        </div>
+        <div class="pack-actions">
+          <button class="btn btn-sm" data-act="up" data-idx="${idx}" ${idx === 0 ? "disabled" : ""}>Up</button>
+          <button class="btn btn-sm" data-act="down" data-idx="${idx}" ${idx === state.packs.length - 1 ? "disabled" : ""}>Down</button>
+          <button class="btn btn-sm" data-act="del" data-idx="${idx}">X</button>
+        </div>
+      `;
+      list.appendChild(el);
+    });
+    list.querySelectorAll("button[data-act]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const i = parseInt(btn.dataset.idx, 10);
+        const act = btn.dataset.act;
+        if (act === "up" && i > 0) [state.packs[i - 1], state.packs[i]] = [state.packs[i], state.packs[i - 1]];
+        if (act === "down" && i < state.packs.length - 1) [state.packs[i + 1], state.packs[i]] = [state.packs[i], state.packs[i + 1]];
+        if (act === "del") state.packs.splice(i, 1);
+        recompute();
+      });
+    });
+  }
+
+  function renderMatrix(plan) {
+    const head = document.getElementById("matrixHead");
+    const body = document.getElementById("matrixBody");
+    head.innerHTML = `<tr>
+      <th>Asset Path</th>
+      ${plan.packs.map(p => `<th>${escapeHtml(p.name)}</th>`).join("")}
+      <th>Strategy</th>
+      <th>Status</th>
+    </tr>`;
+
+    body.innerHTML = "";
+    for (const f of plan.files) {
+      const fileIssues = plan.issues.filter(i => i.path === f.relative);
+      const hasErr = fileIssues.some(i => i.level === "error");
+      const hasWarn = fileIssues.some(i => i.level === "warning");
+      let statusHtml = `<span class="pill pill-ok">CLEAN</span>`;
+      if (hasErr) {
+        const rules = [...new Set(fileIssues.filter(i => i.level === "error").map(i => i.rule))].join(",");
+        statusHtml = `<span class="pill pill-err">${rules}</span>`;
+      } else if (hasWarn) {
+        const rules = [...new Set(fileIssues.filter(i => i.level === "warning").map(i => i.rule))].join(",");
+        statusHtml = `<span class="pill pill-warn">${rules}</span>`;
+      } else if (f.merged) {
+        statusHtml = `<span class="pill pill-info">MERGED</span>`;
+      }
+
+      const tr = document.createElement("tr");
+      tr.className = "selectable" + (f.relative === state.selectedPath ? " selected" : "");
+      tr.innerHTML = `
+        <td class="mono">${escapeHtml(f.relative)}</td>
+        ${plan.packs.map(p => `<td class="mono">${p.files.has(f.relative) ? "present" : "-"}</td>`).join("")}
+        <td>${escapeHtml(f.strategy)}</td>
+        <td>${statusHtml}</td>
+      `;
+      tr.addEventListener("click", () => {
+        state.selectedPath = f.relative;
+        state.activeTab = "file";
+        document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "file"));
+        renderMatrix(plan);
+        renderPreview();
+      });
+      body.appendChild(tr);
+    }
+  }
+
+  function renderIssues(plan) {
+    const box = document.getElementById("issueList");
+    document.getElementById("diagCount").textContent = `${plan.issues.length} issue(s)`;
+    box.innerHTML = "";
+    for (const iss of plan.issues) {
+      const cls = iss.level === "error" ? "pill-err" : (iss.level === "warning" ? "pill-warn" : "pill-info");
+      const div = document.createElement("div");
+      div.className = "issue-row";
+      div.innerHTML = `
+        <div class="issue-head">
+          <span class="pill ${cls}">${iss.level.toUpperCase()}</span>
+          <span class="pill pill-info">${iss.rule}</span>
+          <span class="mono">${escapeHtml(iss.path)}</span>
+        </div>
+        <div class="issue-msg">${escapeHtml(iss.message)}</div>
+      `;
+      box.appendChild(div);
+    }
+  }
+
+  function renderPreview() {
+    const pre = document.getElementById("codePreview");
+    if (!state.plan) return;
+    if (state.activeTab === "sarif") {
+      pre.textContent = renderSarif(state.plan);
+      return;
+    }
+    if (state.activeTab === "json") {
+      pre.textContent = renderCliJson(state.plan, state.zipSha1, state.zipSha256);
+      return;
+    }
+    const f = state.plan.files.find(x => x.relative === state.selectedPath);
+    if (!f) { pre.textContent = ""; return; }
+    if (f.relative.endsWith(".json") || f.relative.endsWith(".mcmeta") || f.relative.endsWith(".fsh") || f.relative.endsWith(".vsh")) {
+      pre.textContent = dec.decode(f.bytes);
+    } else {
+      pre.textContent = `[Binary / Single-Owner Asset: ${f.relative}]\nSize: ${f.bytes.length} bytes\nPreview ASCII: ${dec.decode(f.bytes.subarray(0, 120))}`;
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  // Event wiring
+  const dz = document.getElementById("dropzone");
+  const fi = document.getElementById("fileInput");
+  dz.addEventListener("click", () => fi.click());
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("drag"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("drag"));
+  dz.addEventListener("drop", async e => {
+    e.preventDefault();
+    dz.classList.remove("drag");
+    const files = [...e.dataTransfer.files].filter(f => f.name.toLowerCase().endsWith(".zip"));
+    for (const f of files) state.packs.push(await readZipFile(f));
+    recompute();
+  });
+  fi.addEventListener("change", async () => {
+    for (const f of [...fi.files]) state.packs.push(await readZipFile(f));
+    fi.value = "";
+    recompute();
+  });
+
+  document.getElementById("btnLoadDemo").addEventListener("click", loadDemoStack);
+  document.getElementById("btnClearPacks").addEventListener("click", () => { state.packs = []; recompute(); });
+  document.getElementById("versionOverride").addEventListener("input", () => recompute());
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      state.activeTab = tab.dataset.tab;
+      document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t === tab));
+      renderPreview();
+    });
+  });
+
+  document.getElementById("btnCopySha1").addEventListener("click", () => {
+    if (!state.zipSha1) return;
+    navigator.clipboard.writeText(`resource-pack-sha1=${state.zipSha1}`);
+  });
+
+  document.getElementById("btnDownloadZip").addEventListener("click", () => {
+    if (!state.zipBytes) return;
+    const blob = new Blob([state.zipBytes], { type: "application/zip" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "merged-pack.zip";
+    a.click();
+  });
+
+  document.getElementById("btnDownloadSarif").addEventListener("click", () => {
+    if (!state.plan) return;
+    const blob = new Blob([renderSarif(state.plan)], { type: "application/sarif+json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "packmerge.sarif";
+    a.click();
+  });
+
+  loadDemoStack();
+})();
+</script>
+</body>
+</html>
