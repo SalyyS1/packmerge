@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>packmerge v0.4.0 | Multi-Pack Conflict Matrix, pHash Deduplicator &amp; 26.3 Compiler</title>
-  <meta name="description" content="Zero-upload browser resource pack conflict matrix, 64-bit 2D DCT pHash &amp; dual-era overlay deduplicator, override tree pruner, Minecraft 26.3 sound atlas auditor, deterministic SHA-1 ZIP compiler, and OASIS SARIF v2.1.0 generator.">
+  <title>packmerge v0.5.0 | Multi-Pack Conflict Matrix, pHash Deduplicator &amp; 26.3 Compiler</title>
+  <meta name="description" content="Zero-upload browser resource pack conflict matrix, 64-bit 2D DCT pHash &amp; dual-era overlay deduplicator, override tree pruner, cross-namespace atlas simulator, Minecraft 26.3 sound &amp; OGG Vorbis codec auditor, deterministic SHA-1 ZIP compiler, and OASIS SARIF v2.1.0 generator.">
   <style>
     :root {
       --bg: #0b0f17;
@@ -257,8 +257,8 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <h1>packmerge <span class="badge-ver">v0.4.0</span></h1>
-      <p>Client-side Minecraft resource pack conflict matrix, 64-bit 2D DCT perceptual image hash (pHash) &amp; dual-era overlay deduplicator, model override tree pruner, Minecraft 26.3 (format 97) sound event atlas validator, deterministic SHA-1 ZIP builder, and OASIS SARIF v2.1.0 auditor. Zero uploads; every byte stays in your browser.</p>
+      <h1>packmerge <span class="badge-ver">v0.5.0</span></h1>
+      <p>Client-side Minecraft resource pack conflict matrix, 64-bit 2D DCT perceptual image hash (pHash) &amp; dual-era overlay deduplicator, model override tree pruner, cross-namespace texture atlas packing simulator, Minecraft 26.3 (format 97) sound event &amp; OGG Vorbis I codec/sample-rate auditor, deterministic SHA-1 ZIP builder, and OASIS SARIF v2.1.0 auditor. Zero uploads; every byte stays in your browser.</p>
     </div>
     <div class="nav-links">
       <button class="btn" id="btnLoadDemo" type="button">Load 3-Pack Demo Stack</button>
@@ -289,6 +289,8 @@
         <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optPhash" checked> --phash</label>
         <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optPruneOverrides" checked> --prune-overrides</label>
         <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optAuditSounds" checked> --audit-sounds</label>
+        <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optAuditAtlas" checked> --audit-atlas</label>
+        <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optAuditAudio" checked> --audit-audio</label>
       </div>
     </section>
 
@@ -350,7 +352,7 @@
 
   <div class="grid-bottom">
     <section class="card">
-      <h2><span>Diagnostics (PM001..PM018)</span><span class="mono" id="diagCount">0 issues</span></h2>
+      <h2><span>Diagnostics (PM001..PM022)</span><span class="mono" id="diagCount">0 issues</span></h2>
       <div class="issue-list" id="issueList"></div>
     </section>
 
@@ -365,7 +367,7 @@
   </div>
 
   <footer>
-    <div>packmerge v0.4.0 by <a href="https://github.com/SalyyS1">Salyvn (SalyyS1)</a>. Apache-2.0 License.</div>
+    <div>packmerge v0.5.0 by <a href="https://github.com/SalyyS1">Salyvn (SalyyS1)</a>. Apache-2.0 License.</div>
     <div>Part of the Minecraft Engineering Suite: <a href="https://salyys1.github.io/glyphsmith/">glyphsmith</a> | <a href="https://salyys1.github.io/packmigrate/">packmigrate</a> | <a href="https://salyys1.github.io/shadersmith/">shadersmith</a> | <a href="https://salyys1.github.io/foliascan/">foliascan</a> | <a href="https://salyys1.github.io/pluginscope/">pluginscope</a> | <a href="https://salyys1.github.io/serverdoctor/">serverdoctor</a></div>
   </footer>
 </div>
@@ -398,7 +400,11 @@
     PM015: { name: "ModelOverridePruned", level: "note", short: "Shadowed or redundant item model override pruned" },
     PM016: { name: "SoundAtlasInvalidSchema", level: "error", short: "Invalid Minecraft 26.3 sounds.json event or entry schema" },
     PM017: { name: "SoundEventReferenceCycle", level: "error", short: "Circular sound event reference chain in sounds.json" },
-    PM018: { name: "SoundMissingOggOrWipe", level: "warning", short: "Destructive replace=true sound wipe or missing .ogg asset" }
+    PM018: { name: "SoundMissingOggOrWipe", level: "warning", short: "Destructive replace=true sound wipe or missing .ogg asset" },
+    PM019: { name: "CrossNamespaceAtlasConflict", level: "warning", short: "Same sprite ID registered from conflicting namespaces in atlas" },
+    PM020: { name: "AtlasSourceMissingSpriteRef", level: "warning", short: "Atlas single source references a missing texture file" },
+    PM021: { name: "AudioCodecMismatch", level: "error", short: "OGG container uses a codec other than Vorbis I" },
+    PM022: { name: "AudioSampleRateOutOfRange", level: "warning", short: "Vorbis stream has abnormal sample rate or channel count" }
   };
 
   const enc = new TextEncoder();
@@ -805,7 +811,9 @@
       dedupeOverlays: document.getElementById("optDedupeOverlays").checked,
       phash: document.getElementById("optPhash").checked,
       pruneOverrides: document.getElementById("optPruneOverrides").checked,
-      auditSounds: document.getElementById("optAuditSounds").checked
+      auditSounds: document.getElementById("optAuditSounds").checked,
+      auditAtlas: document.getElementById("optAuditAtlas").checked,
+      auditAudio: document.getElementById("optAuditAudio").checked
     };
   }
 
@@ -1085,6 +1093,117 @@
     }
   }
 
+  function validateAtlasJs(files, overlays, auditAtlas, issues) {
+    const ovDirs = new Set(overlays.map(o => o.directory));
+    const allPaths = new Set(files.map(f => f.relative));
+    const atlasMap = new Map();
+    for (const f of files) {
+      const parts = f.relative.split("/");
+      let ns = null, atlasKey = null;
+      if (parts.length >= 4 && parts[0] === "assets" && parts[2] === "atlases" && f.relative.endsWith(".json")) {
+        ns = parts[1]; atlasKey = "atlases/" + parts.slice(3).join("/").replace(/\.json$/, "");
+      } else if (parts.length >= 5 && ovDirs.has(parts[0]) && parts[1] === "assets" && parts[3] === "atlases" && f.relative.endsWith(".json")) {
+        ns = parts[2]; atlasKey = "atlases/" + parts.slice(4).join("/").replace(/\.json$/, "");
+      } else continue;
+      let root;
+      try { root = JSON.parse(dec.decode(f.bytes)); } catch (_) { continue; }
+      if (!root || !Array.isArray(root.sources)) continue;
+      if (!atlasMap.has(atlasKey)) atlasMap.set(atlasKey, []);
+      const list = atlasMap.get(atlasKey);
+      for (const src of root.sources) {
+        if (!src || typeof src !== "object") continue;
+        if (src.type === "single" && typeof src.resource === "string") {
+          const id = src.resource.includes(":") ? src.resource : `${ns}:${src.resource}`;
+          list.push({ spriteId: id, ns, filePath: f.relative, src });
+        } else if (src.type === "sprite" && Array.isArray(src.resources)) {
+          for (const r of src.resources) {
+            if (typeof r === "string") list.push({ spriteId: r.includes(":") ? r : `${ns}:${r}`, ns, filePath: f.relative, src });
+          }
+        }
+      }
+    }
+    for (const [atlasKey, entries] of atlasMap.entries()) {
+      const bySprite = new Map();
+      for (const e of entries) {
+        if (!bySprite.has(e.spriteId)) bySprite.set(e.spriteId, []);
+        bySprite.get(e.spriteId).push(e);
+      }
+      for (const [spriteId, claims] of bySprite.entries()) {
+        const nss = [...new Set(claims.map(c => c.ns))];
+        if (nss.length >= 2) {
+          issues.push({
+            rule: "PM019", level: "warning", path: atlasKey,
+            message: `Sprite '${spriteId}' is registered in '${atlasKey}' by ${nss.length} namespaces (${nss.join(" vs ")}); earlier registrations are shadowed.`
+          });
+        }
+      }
+      if (auditAtlas) {
+        for (const e of entries) {
+          if (e.src.type !== "single" || typeof e.src.resource !== "string") continue;
+          const [tNs, tPath] = e.src.resource.includes(":") ? e.src.resource.split(":", 2) : ["minecraft", e.src.resource];
+          const expected = `assets/${tNs}/textures/${tPath}.png`;
+          const found = allPaths.has(expected) || [...ovDirs].some(d => allPaths.has(`${d}/${expected}`));
+          if (!found) {
+            issues.push({
+              rule: "PM020", level: "warning", path: e.filePath,
+              message: `Atlas single source references missing texture '${expected}'.`
+            });
+          }
+        }
+      }
+    }
+  }
+
+  function validateAudioJs(files, overlays, issues) {
+    const ovDirs = new Set(overlays.map(o => o.directory));
+    for (const f of files) {
+      if (!f.relative.toLowerCase().endsWith(".ogg")) continue;
+      const parts = f.relative.split("/");
+      const inSounds = (parts.length >= 4 && parts[0] === "assets" && parts[2] === "sounds") ||
+        (parts.length >= 5 && ovDirs.has(parts[0]) && parts[1] === "assets" && parts[3] === "sounds");
+      if (!inSounds) continue;
+      const b = f.bytes;
+      if (!b || b.length < 27) continue;
+      let off = 0;
+      while (off + 27 <= b.length) {
+        if (b[off] !== 0x4F || b[off + 1] !== 0x67 || b[off + 2] !== 0x67 || b[off + 3] !== 0x53) { off++; continue; }
+        const hdrType = b[off + 5];
+        const segCnt = b[off + 26];
+        if (off + 27 + segCnt > b.length) break;
+        let dataLen = 0;
+        for (let i = 0; i < segCnt; i++) dataLen += b[off + 27 + i];
+        const dataStart = off + 27 + segCnt;
+        if (dataStart + dataLen > b.length) break;
+        if ((hdrType & 0x02) !== 0) {
+          const pkt = b.subarray(dataStart, dataStart + dataLen);
+          const ascii8 = dec.decode(pkt.subarray(0, Math.min(8, pkt.length)));
+          if (pkt.length >= 7 && pkt[0] === 0x01 && ascii8.slice(1, 7) === "vorbis") {
+            if (pkt.length >= 16) {
+              const dv = new DataView(pkt.buffer, pkt.byteOffset + 7, pkt.byteLength - 7);
+              const ver = dv.getInt32(0, true);
+              const ch = dv.getUint8(4);
+              const sr = dv.getInt32(5, true);
+              if (ver !== 0 || ch > 2 || sr < 8000 || sr > 48000) {
+                issues.push({
+                  rule: "PM022", level: "warning", path: f.relative,
+                  message: `Vorbis I header declares version=${ver}, channels=${ch}, sample_rate=${sr} Hz (expected mono/stereo within 8000..48000 Hz).`
+                });
+              }
+            }
+          } else if (ascii8 === "OpusHead") {
+            issues.push({ rule: "PM021", level: "error", path: f.relative, message: "OGG container uses Opus codec; Minecraft requires Vorbis I." });
+          } else if (pkt.length >= 5 && pkt[0] === 0x7F && ascii8.slice(1, 5) === "FLAC") {
+            issues.push({ rule: "PM021", level: "error", path: f.relative, message: "OGG container uses FLAC-in-OGG; Minecraft requires Vorbis I." });
+          } else if (ascii8 === "Speex   ") {
+            issues.push({ rule: "PM021", level: "error", path: f.relative, message: "OGG container uses Speex codec; Minecraft requires Vorbis I." });
+          }
+          break;
+        }
+        off = dataStart + dataLen;
+      }
+    }
+  }
+
   async function runMergePlan(packs, versionSpec) {
     const opts = getOptions();
     const issues = [];
@@ -1298,6 +1417,8 @@
     }
 
     validateSoundsJs(activeFiles, activeOverlays, opts.auditSounds, issues);
+    validateAtlasJs(activeFiles, activeOverlays, opts.auditAtlas, issues);
+    if (opts.auditAudio) validateAudioJs(activeFiles, activeOverlays, issues);
 
     const desc = (declared.find(d => d.description) || {}).description || "merged pack";
     activeFiles.push({
@@ -1591,7 +1712,7 @@
         tool: {
           driver: {
             name: "packmerge",
-            version: "0.4.0",
+            version: "0.5.0",
             informationUri: "https://github.com/SalyyS1/packmerge",
             rules: Object.entries(RULES).map(([id, r]) => ({
               id, name: r.name,
@@ -1839,7 +1960,7 @@
   document.getElementById("btnLoadDemo").addEventListener("click", loadDemoStack);
   document.getElementById("btnClearPacks").addEventListener("click", () => { state.packs = []; recompute(); });
   document.getElementById("versionOverride").addEventListener("input", () => recompute());
-  ["optDedupeOverlays", "optPhash", "optPruneOverrides", "optAuditSounds"].forEach(id => {
+  ["optDedupeOverlays", "optPhash", "optPruneOverrides", "optAuditSounds", "optAuditAtlas", "optAuditAudio"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => recompute());
   });
 

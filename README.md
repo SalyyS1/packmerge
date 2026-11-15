@@ -7,7 +7,7 @@
 
 packmerge puts several Minecraft resource packs (directories or `.zip` archives) into one the way the client would, not the way `cp -r` does. Files the game stacks are stacked (a font's providers, an atlas's sources, the rows of a `custom_model_data` dispatch table, and assets inside declared `overlays.entries` directories), and files that can only have one owner are reported by name along with which pack won.
 
-Try the zero-upload [**Browser Multi-Pack Conflict Matrix & Merger**](https://salyys1.github.io/packmerge/) to inspect collisions, run 64-bit 2D DCT perceptual image hash (`pHash`) and dual-era overlay deduplication, prune shadowed model override trees, audit Minecraft `26.3` sound event atlases, export OASIS SARIF v2.1.0 diagnostics, and compile deterministic SHA-1 `.zip` packs directly in your browser.
+Try the zero-upload [**Browser Multi-Pack Conflict Matrix & Merger**](https://salyys1.github.io/packmerge/) to inspect collisions, run 64-bit 2D DCT perceptual image hash (`pHash`) and dual-era overlay deduplication, prune shadowed model override trees, simulate cross-namespace texture atlas packing, audit Minecraft `26.3` sound event atlases and OGG Vorbis audio streams, export OASIS SARIF v2.1.0 diagnostics, and compile deterministic SHA-1 `.zip` packs directly in your browser.
 
 ```text
 $ packmerge plugin-a.zip plugin-b.zip --out merged --zip server-pack.zip --sarif packmerge.sarif
@@ -49,7 +49,7 @@ Wrote SARIF v2.1.0 report to packmerge.sarif
 
 A server that runs multiple custom-item or HUD plugins produces multiple resource packs, while `server.properties` can hand the client only one URL (or a fixed stack where unmerged `models/item/*.json` and `items/*.json` overwrite each other). Copying one directory over another applies single-owner semantics to everything: the lower pack's font providers, sound events, translation keys, `overlays.entries` manifests, and `custom_model_data` rows are silently deleted.
 
-packmerge unions 1.21.4 to 26.3 item dispatch tables (`range_dispatch` floats, `select` strings with codec-safe duplicate `when` pruning, and hybrid `select` -> `range_dispatch` fallback chaining), prunes shadowed legacy overrides and redundant 26.3 dispatch knots (`--prune-overrides`), deduplicates dual-era overlay files and re-encoded PNG textures with 64-bit 2D DCT perceptual image hashing (`--dedupe-overlays`, `--phash`), validates Minecraft `26.3` `sounds.json` atlases and `"type": "event"` reference graphs (`--audit-sounds`), reconciles `[major, minor]` `pack.mcmeta` ranges through format `97`, emits byte-deterministic `.zip` archives with `resource-pack-sha1` digests, and exports OASIS SARIF v2.1.0 reports (`PM001`..`PM018`).
+packmerge unions 1.21.4 to 26.3 item dispatch tables (`range_dispatch` floats, `select` strings with codec-safe duplicate `when` pruning, and hybrid `select` -> `range_dispatch` fallback chaining), prunes shadowed legacy overrides and redundant 26.3 dispatch knots (`--prune-overrides`), deduplicates dual-era overlay files and re-encoded PNG textures with 64-bit 2D DCT perceptual image hashing (`--dedupe-overlays`, `--phash`), simulates texture atlas `single`/`sprite` packing to detect cross-namespace sprite collisions and missing sprite files (`--audit-atlas`), validates Minecraft `26.3` `sounds.json` atlases and OGG Vorbis I container codecs/sample rates (`--audit-sounds`, `--audit-audio`), reconciles `[major, minor]` `pack.mcmeta` ranges through format `97`, emits byte-deterministic `.zip` archives with `resource-pack-sha1` digests, and exports OASIS SARIF v2.1.0 reports (`PM001`..`PM022`).
 
 ## Getting started
 
@@ -57,7 +57,7 @@ Requires Java 21 or newer. Download `packmerge.jar` from [**Releases**](https://
 
 ```sh
 packmerge oraxen.zip nexo.zip hud-pack/ --zip server-pack.zip
-packmerge oraxen.zip nexo.zip --zip server-pack.zip --dedupe-overlays --phash --prune-overrides --audit-sounds
+packmerge oraxen.zip nexo.zip --zip server-pack.zip --dedupe-overlays --phash --prune-overrides --audit-sounds --audit-atlas --audit-audio
 packmerge base extra --out merged --zip server-pack.zip
 packmerge a.zip b.zip --sarif packmerge.sarif
 packmerge a.zip b.zip --dry-run --json > merge-report.json
@@ -68,7 +68,7 @@ packmerge a.zip b.zip --zip server-pack.zip --versions 1.21.4..26.3 --strict
 |---|---|
 | `--out DIR` | Directory to write the merged unpacked files into (refuses non-empty directories unless `--force`) |
 | `--zip FILE` | Write a byte-reproducible `.zip` archive (sorted entries, fixed epoch timestamp) and print `resource-pack-sha1=<sha1>` |
-| `--sarif FILE` | Write an OASIS SARIF v2.1.0 diagnostic report (`PM001`..`PM018`) for GitHub Code Scanning |
+| `--sarif FILE` | Write an OASIS SARIF v2.1.0 diagnostic report (`PM001`..`PM022`) for GitHub Code Scanning |
 | `--versions 1.21.4..26.3` | Explicit `pack.mcmeta` version or `[major, minor]` format range (defaults to the intersection of the input packs' ranges) |
 | `--description TEXT` | Description for the merged `pack.mcmeta` (defaults to the first pack's description) |
 | `--dedupe-overlays` | Prune redundant assets inside `overlays.entries` directories that match underlying base or lower-overlay files across their format range (`PM014`) |
@@ -76,6 +76,8 @@ packmerge a.zip b.zip --zip server-pack.zip --versions 1.21.4..26.3 --strict
 | `--phash-threshold INT` | Maximum 64-bit `pHash` Hamming distance (`0..64`, default `4`) flagged as a near-duplicate texture |
 | `--prune-overrides` | Prune shadowed legacy `overrides` predicates, redundant `range_dispatch` step knots, fallback-equivalent `select` cases, and tautological `condition` branches (`PM015`) |
 | `--audit-sounds` | Verify `sounds.json` `.ogg` audio file existence and custom `type=event` targets across root `assets/` and `26.3` overlays (`PM016`..`PM018`) |
+| `--audit-atlas` | Simulate texture atlas packing and verify `single` sprite source textures exist across merged root and overlay directories (`PM019`..`PM020`) |
+| `--audit-audio` | Inspect `.ogg` BOS bitstream headers under `sounds/` for non-Vorbis codecs (`Opus`, `FLAC`, `Speex`) and out-of-range Vorbis I sample rates or channel counts (`PM021`..`PM022`) |
 | `--dry-run` | Compute the full merge plan and collision report without writing files |
 | `--json` | Emit machine-readable JSON report (`zipSha1`, `zipSha256`, `overlays`, `dedupedOverlayFiles`, `prunedOverrides`, `perceptualDuplicates`, `issues`) to stdout |
 | `--force` | Overwrite an existing `--out` directory or `--zip` file |
@@ -86,10 +88,10 @@ Exit codes: `0` for a clean merge, `1` when collisions or `--strict` warnings ar
 ### GitHub Action & Code Scanning
 
 ```yaml
-- uses: SalyyS1/packmerge@v0.4.0
+- uses: SalyyS1/packmerge@v0.5.0
   continue-on-error: true
   with:
-    args: packs/oraxen.zip packs/nexo.zip packs/ui.zip --zip dist/server-pack.zip --dedupe-overlays --phash --prune-overrides --audit-sounds --strict
+    args: packs/oraxen.zip packs/nexo.zip packs/ui.zip --zip dist/server-pack.zip --dedupe-overlays --phash --prune-overrides --audit-sounds --audit-atlas --audit-audio --strict
     sarif: packmerge.sarif
 
 - uses: github/codeql-action/upload-sarif@v3
@@ -104,9 +106,9 @@ Exit codes: `0` for a clean merge, `1` when collisions or `--strict` warnings ar
 | `font/*.json` | `providers` concatenated in pack order | `PM001` codepoint collision, `PM012` runtime coverage note |
 | `items/**.json` (`range_dispatch` / `select` / `condition`) | Float thresholds unioned, `select` string cases unioned & deduplicated, mixed `select` + `range_dispatch` chained via `fallback`, `oversized_in_gui` reconciled, step knots & tautologies pruned (`--prune-overrides`) | `PM003` threshold/case collision, `PM004` unsupported root, `PM008` property conflict, `PM015` dispatch branch pruned |
 | `models/**.json` with `overrides` | `overrides` lists unioned in pack order; dominated/shadowed predicates & no-op knots pruned (`--prune-overrides`) | `PM002` predicate collision, `PM008` base model conflict, `PM015` shadowed override pruned |
-| `sounds.json` | Key union across packs + Minecraft `26.3` schema validation, `.ogg` extension guard, `type=event` cycle DFS, `replace=true` wipe check, and `.ogg` file existence audit (`--audit-sounds`) | `PM007` conflicting sound event overwrite, `PM016` invalid sound schema, `PM017` event reference cycle, `PM018` `replace=true` wipe or missing `.ogg` |
+| `sounds.json` & `sounds/**.ogg` | Key union across packs + Minecraft `26.3` schema validation, `.ogg` extension guard, `type=event` cycle DFS, `replace=true` wipe check (`--audit-sounds`), and OGG container codec & Vorbis I header audit (`--audit-audio`) | `PM007` conflicting sound event overwrite, `PM016` invalid sound schema, `PM017` event reference cycle, `PM018` `replace=true` wipe or missing `.ogg`, `PM021` non-Vorbis OGG codec, `PM022` Vorbis sample-rate/channel warning |
 | `lang/*.json` | Key union across packs | `PM011` additive summary |
-| `atlases/*.json` | `sources` concatenated in pack order | `PM004` missing array, `PM011` additive summary |
+| `atlases/*.json` | `sources` concatenated in pack order + cross-namespace sprite ID conflict resolver and missing `single` sprite texture check (`--audit-atlas`) | `PM004` missing array, `PM011` additive summary, `PM019` cross-namespace sprite conflict, `PM020` missing sprite texture |
 | `pack.mcmeta` & `<overlay>/assets/**` | Minor-aware intersection across `1.20`..`26.3` (`97` / `[97, 1]`), `overlays.entries` preserved, redundant overlay files pruned with format-coverage verification (`--dedupe-overlays`) | `PM005` disjoint pack formats, `PM009` invalid overlay dir, `PM010` disjoint overlay bounds, `PM014` redundant overlay file pruned |
 | Single-owner assets & PNG textures | Later pack wins when digests differ; `--phash` coalesces re-encoded RGBA-identical PNGs to smallest encoding and detects cross-namespace near-duplicates via 64-bit 2D DCT `pHash` | `PM006` single-owner overwrite warning, `PM013` perceptual PNG duplicate |
 

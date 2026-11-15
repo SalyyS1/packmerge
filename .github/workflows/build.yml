@@ -112,8 +112,26 @@ jobs:
           test "$code" = "1" || { echo "expected exit code 1, got $code"; exit 1; }
           jq -e '.prunedOverrides == 1' /tmp/v040.json
           jq -e '[.overrides[].model] == ["a:item/scroll", "b:item/map", "b:item/gem"]' /tmp/merged-v040/assets/minecraft/models/item/paper.json
-          jq -e '.runs[0].tool.driver.rules | length == 18' /tmp/v040.sarif
+          jq -e '.runs[0].tool.driver.rules | length == 22' /tmp/v040.sarif
           jq -e '[.runs[0].results[].ruleId] | index("PM015") != null and index("PM018") != null' /tmp/v040.sarif
+
+      - name: v0.5.0 atlas sprite simulation and OGG codec audit work end-to-end
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/p1/assets/ns1/atlases /tmp/p2/assets/ns2/atlases /tmp/p2/assets/ns2/sounds
+          printf '{"pack":{"pack_format":46,"description":"p1"}}\n' > /tmp/p1/pack.mcmeta
+          printf '{"pack":{"pack_format":46,"description":"p2"}}\n' > /tmp/p2/pack.mcmeta
+          printf '{"sources":[{"type":"single","resource":"shared:item/icon"}]}\n' > /tmp/p1/assets/ns1/atlases/blocks.json
+          printf '{"sources":[{"type":"single","resource":"shared:item/icon"}]}\n' > /tmp/p2/assets/ns2/atlases/blocks.json
+          python3 -c 'pkt=b"OpusHead\x01\x02\x00\x00\x80\xbb\x00\x00\x00\x00\x00"; open("/tmp/p2/assets/ns2/sounds/bad.ogg","wb").write(b"OggS\x00\x02"+b"\x00"*20+bytes([1,len(pkt)])+pkt)'
+          set +e
+          java -jar build/libs/packmerge.jar /tmp/p1 /tmp/p2 \
+            --out /tmp/merged-v050 --audit-atlas --audit-audio \
+            --sarif /tmp/v050.sarif --json > /tmp/v050.json
+          code=$?
+          set -e
+          test "$code" = "1" || { echo "expected exit code 1, got $code"; exit 1; }
+          jq -e '[.runs[0].results[].ruleId] | index("PM019") != null and index("PM020") != null and index("PM021") != null' /tmp/v050.sarif
 
       - uses: actions/upload-artifact@v5
         if: always()
