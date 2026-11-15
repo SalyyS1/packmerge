@@ -23,13 +23,15 @@ data class MergeOptions(
     val phashThreshold: Int = 4,
     val pruneOverrides: Boolean = false,
     val auditSounds: Boolean = false,
+    val auditAtlas: Boolean = false,
+    val auditAudio: Boolean = false,
 ) {
     init {
         require(phashThreshold in 0..64) { "--phash-threshold must be between 0 and 64 (got $phashThreshold)." }
     }
 
     val hasSinglePackTransforms: Boolean
-        get() = dedupeOverlays || phash || pruneOverrides || auditSounds
+        get() = dedupeOverlays || phash || pruneOverrides || auditSounds || auditAtlas || auditAudio
 }
 
 class MergePlan(
@@ -127,6 +129,19 @@ class PackMerge(
             files = compiledFiles,
             overlays = activeOverlays,
             auditMissingAssets = options.auditSounds,
+            report = report,
+        )
+
+        AtlasPackingSimulator.validateAll(
+            files = compiledFiles,
+            overlays = activeOverlays,
+            auditAtlas = options.auditAtlas,
+            report = report,
+        )
+
+        AudioBitDepthAuditor.validateAll(
+            files = compiledFiles,
+            overlays = activeOverlays,
             report = report,
         )
 

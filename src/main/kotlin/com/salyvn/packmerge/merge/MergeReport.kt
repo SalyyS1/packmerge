@@ -135,6 +135,34 @@ enum class MergeRule(
         shortDescription = "Destructive replace=true sound wipe or missing .ogg asset",
         fullDescription = "A sound event sets replace=true to wipe lower-pack sound pools or references a missing .ogg sound file or dangling event target under --audit-sounds.",
     ),
+    CROSS_NAMESPACE_ATLAS_CONFLICT(
+        id = "PM019",
+        ruleName = "CrossNamespaceAtlasConflict",
+        defaultLevel = IssueLevel.WARNING,
+        shortDescription = "Same sprite ID registered from conflicting namespaces in atlas",
+        fullDescription = "Two or more input packs contribute single or sprite atlas sources for the same resolved sprite ID from different namespaces, leaving earlier registrations shadowed in the compiled atlas.",
+    ),
+    ATLAS_SOURCE_MISSING_SPRITE_REF(
+        id = "PM020",
+        ruleName = "AtlasSourceMissingSpriteRef",
+        defaultLevel = IssueLevel.WARNING,
+        shortDescription = "Atlas single source references a missing texture file",
+        fullDescription = "An atlas single source references a texture path that is absent from all input packs; the sprite will not appear in the compiled atlas at runtime.",
+    ),
+    AUDIO_CODEC_MISMATCH(
+        id = "PM021",
+        ruleName = "AudioCodecMismatch",
+        defaultLevel = IssueLevel.ERROR,
+        shortDescription = "OGG container uses a codec other than Vorbis I",
+        fullDescription = "Minecraft uses libvorbis exclusively; OGG containers carrying Opus, FLAC-in-OGG, or Speex streams will silently fail to load. Re-encode as Vorbis I.",
+    ),
+    AUDIO_SAMPLE_RATE_OUT_OF_RANGE(
+        id = "PM022",
+        ruleName = "AudioSampleRateOutOfRange",
+        defaultLevel = IssueLevel.WARNING,
+        shortDescription = "Vorbis stream has abnormal sample rate or channel count",
+        fullDescription = "A Vorbis I sound file declares a sample rate outside 8000..48000 Hz or more than 2 channels; the Minecraft client may resample with audible distortion or refuse to load the file.",
+    ),
 }
 
 /** Something worth telling the person running the merge, with the file and diagnostic rule it belongs to. */

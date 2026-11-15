@@ -84,6 +84,16 @@ class MergeCommand : CliktCommand(name = "packmerge") {
         help = "Verify Minecraft 26.3 sounds.json .ogg file paths and custom type=event references across root and overlays",
     ).flag()
 
+    private val auditAtlas by option(
+        "--audit-atlas",
+        help = "Verify that atlas single sources reference textures that exist in the merged pack",
+    ).flag()
+
+    private val auditAudio by option(
+        "--audit-audio",
+        help = "Scan .ogg files for non-Vorbis codecs (PM021) and abnormal sample rates or channel counts (PM022)",
+    ).flag()
+
     private val force by option("--force", help = "Write into --out or --zip even if the target already exists").flag()
 
     private val dryRun by option("--dry-run", help = "Report what would be merged and write nothing").flag()
@@ -111,6 +121,8 @@ class MergeCommand : CliktCommand(name = "packmerge") {
             phashThreshold = phashThreshold ?: 4,
             pruneOverrides = pruneOverrides,
             auditSounds = auditSounds,
+            auditAtlas = auditAtlas,
+            auditAudio = auditAudio,
         )
         if (packs.isEmpty() || (packs.size < 2 && !options.hasSinglePackTransforms)) {
             fail("Give at least two packs to merge. One pack is already merged.")
