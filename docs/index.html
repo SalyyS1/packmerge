@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>packmerge v0.3.0 | Multi-Pack Conflict Matrix &amp; Resource Pack Compiler</title>
-  <meta name="description" content="Zero-upload browser resource pack conflict matrix, Minecraft 1.20.1 to 26.3 item definition &amp; font merger, deterministic SHA-1 ZIP compiler, and OASIS SARIF v2.1.0 generator.">
+  <title>packmerge v0.4.0 | Multi-Pack Conflict Matrix, pHash Deduplicator &amp; 26.3 Compiler</title>
+  <meta name="description" content="Zero-upload browser resource pack conflict matrix, 64-bit 2D DCT pHash &amp; dual-era overlay deduplicator, override tree pruner, Minecraft 26.3 sound atlas auditor, deterministic SHA-1 ZIP compiler, and OASIS SARIF v2.1.0 generator.">
   <style>
     :root {
       --bg: #0b0f17;
@@ -257,8 +257,8 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <h1>packmerge <span class="badge-ver">v0.3.0</span></h1>
-      <p>Client-side Minecraft resource pack conflict matrix, 1.20.1 to 26.3 (format 97) item definition &amp; overlay compiler, deterministic SHA-1 ZIP builder, and OASIS SARIF v2.1.0 auditor. Zero uploads; every byte stays in your browser.</p>
+      <h1>packmerge <span class="badge-ver">v0.4.0</span></h1>
+      <p>Client-side Minecraft resource pack conflict matrix, 64-bit 2D DCT perceptual image hash (pHash) &amp; dual-era overlay deduplicator, model override tree pruner, Minecraft 26.3 (format 97) sound event atlas validator, deterministic SHA-1 ZIP builder, and OASIS SARIF v2.1.0 auditor. Zero uploads; every byte stays in your browser.</p>
     </div>
     <div class="nav-links">
       <button class="btn" id="btnLoadDemo" type="button">Load 3-Pack Demo Stack</button>
@@ -283,6 +283,12 @@
         <label class="mono" for="versionOverride" style="color:var(--muted)">--versions:</label>
         <input class="input-inline" id="versionOverride" type="text" placeholder="auto (intersection)">
         <button class="btn btn-sm" id="btnClearPacks" type="button">Clear</button>
+      </div>
+      <div class="controls-row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px">
+        <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optDedupeOverlays" checked> --dedupe-overlays</label>
+        <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optPhash" checked> --phash</label>
+        <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optPruneOverrides" checked> --prune-overrides</label>
+        <label class="mono" style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="optAuditSounds" checked> --audit-sounds</label>
       </div>
     </section>
 
@@ -324,7 +330,7 @@
         <button class="btn btn-sm" id="btnCopySha1" type="button">Copy SHA-1 Line</button>
       </div>
       <div style="margin-top:12px;font-size:12px;color:var(--muted)">
-        Supports 1.21.4+ <span class="mono">items/*.json</span> (<span class="mono">range_dispatch</span> threshold union, <span class="mono">select</span> string union with duplicate <span class="mono">when</span> pruning, and hybrid <span class="mono">select -&gt; range_dispatch</span> fallback chaining), <span class="mono">overlays.entries</span> directory asset merging, <span class="mono">font/*.json</span> codepoint collision detection, and dual-era 1.20.1..26.3 <span class="mono">pack.mcmeta</span> synthesis.
+        Supports 1.21.4..26.3 <span class="mono">items/*.json</span> (<span class="mono">range_dispatch</span>, <span class="mono">select</span>, hybrid <span class="mono">select -&gt; range_dispatch</span> chaining, and step-knot pruning), legacy <span class="mono">overrides</span> dominance pruning, 64-bit 2D DCT <span class="mono">pHash</span> &amp; dual-era <span class="mono">overlays.entries</span> deduplication, and Minecraft 26.3 <span class="mono">sounds.json</span> cycle &amp; <span class="mono">.ogg</span> validation.
       </div>
     </section>
   </div>
@@ -344,7 +350,7 @@
 
   <div class="grid-bottom">
     <section class="card">
-      <h2><span>Diagnostics (PM001..PM012)</span><span class="mono" id="diagCount">0 issues</span></h2>
+      <h2><span>Diagnostics (PM001..PM018)</span><span class="mono" id="diagCount">0 issues</span></h2>
       <div class="issue-list" id="issueList"></div>
     </section>
 
@@ -359,8 +365,8 @@
   </div>
 
   <footer>
-    <div>packmerge v0.3.0 by <a href="https://github.com/SalyyS1">Salyvn (SalyyS1)</a>. Apache-2.0 License.</div>
-    <div>Part of the Minecraft Engineering Suite: <a href="https://salyys1.github.io/glyphsmith/">glyphsmith</a> | <a href="https://salyys1.github.io/shadersmith/">shadersmith</a> | <a href="https://salyys1.github.io/foliascan/">foliascan</a> | <a href="https://salyys1.github.io/pluginscope/">pluginscope</a> | <a href="https://salyys1.github.io/serverdoctor/">serverdoctor</a></div>
+    <div>packmerge v0.4.0 by <a href="https://github.com/SalyyS1">Salyvn (SalyyS1)</a>. Apache-2.0 License.</div>
+    <div>Part of the Minecraft Engineering Suite: <a href="https://salyys1.github.io/glyphsmith/">glyphsmith</a> | <a href="https://salyys1.github.io/packmigrate/">packmigrate</a> | <a href="https://salyys1.github.io/shadersmith/">shadersmith</a> | <a href="https://salyys1.github.io/foliascan/">foliascan</a> | <a href="https://salyys1.github.io/pluginscope/">pluginscope</a> | <a href="https://salyys1.github.io/serverdoctor/">serverdoctor</a></div>
   </footer>
 </div>
 
@@ -386,7 +392,13 @@
     PM009: { name: "InvalidOverlayDirectory", level: "error", short: "Invalid overlay directory identifier in pack.mcmeta" },
     PM010: { name: "OverlayFormatConflict", level: "warning", short: "Conflicting format bounds for shared overlay directory" },
     PM011: { name: "AdditiveMergeSummary", level: "note", short: "Additive resource merge summary" },
-    PM012: { name: "PackFormatNote", level: "note", short: "Pack format reconciliation or coverage note" }
+    PM012: { name: "PackFormatNote", level: "note", short: "Pack format reconciliation or coverage note" },
+    PM013: { name: "PerceptualTextureDuplicate", level: "warning", short: "Perceptually identical or near-duplicate PNG texture across packs" },
+    PM014: { name: "OverlayAssetDeduplicated", level: "note", short: "Redundant dual-era overlay asset pruned" },
+    PM015: { name: "ModelOverridePruned", level: "note", short: "Shadowed or redundant item model override pruned" },
+    PM016: { name: "SoundAtlasInvalidSchema", level: "error", short: "Invalid Minecraft 26.3 sounds.json event or entry schema" },
+    PM017: { name: "SoundEventReferenceCycle", level: "error", short: "Circular sound event reference chain in sounds.json" },
+    PM018: { name: "SoundMissingOggOrWipe", level: "warning", short: "Destructive replace=true sound wipe or missing .ogg asset" }
   };
 
   const enc = new TextEncoder();
@@ -788,7 +800,293 @@
     return enc.encode(JSON.stringify(root, null, 2) + "\n");
   }
 
-  function runMergePlan(packs, versionSpec) {
+  function getOptions() {
+    return {
+      dedupeOverlays: document.getElementById("optDedupeOverlays").checked,
+      phash: document.getElementById("optPhash").checked,
+      pruneOverrides: document.getElementById("optPruneOverrides").checked,
+      auditSounds: document.getElementById("optAuditSounds").checked
+    };
+  }
+
+  // Orthonormal 32x32 DCT-II basis for client-side 64-bit pHash
+  const DCT_BASIS = (() => {
+    const N = 32;
+    const m = [];
+    for (let u = 0; u < N; u++) {
+      const s = u === 0 ? Math.sqrt(1 / N) : Math.sqrt(2 / N);
+      const row = new Float64Array(N);
+      for (let x = 0; x < N; x++) row[x] = s * Math.cos(((2 * x + 1) * u * Math.PI) / (2 * N));
+      m.push(row);
+    }
+    return m;
+  })();
+
+  function isPngBytes(b) {
+    return b && b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47;
+  }
+
+  async function inspectPngClient(bytes) {
+    if (!isPngBytes(bytes)) return null;
+    try {
+      const bmp = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+      const w = bmp.width, h = bmp.height;
+      const cnv = document.createElement("canvas");
+      cnv.width = w; cnv.height = h;
+      const ctx = cnv.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(bmp, 0, 0);
+      const rgba = ctx.getImageData(0, 0, w, h).data;
+      const norm = new Uint8Array(8 + rgba.length);
+      new DataView(norm.buffer).setUint32(0, w, false);
+      new DataView(norm.buffer).setUint32(4, h, false);
+      for (let i = 0; i < rgba.length; i += 4) {
+        if (rgba[i + 3] === 0) { norm[8 + i] = 0; norm[8 + i + 1] = 0; norm[8 + i + 2] = 0; norm[8 + i + 3] = 0; }
+        else { norm[8 + i] = rgba[i]; norm[8 + i + 1] = rgba[i + 1]; norm[8 + i + 2] = rgba[i + 2]; norm[8 + i + 3] = rgba[i + 3]; }
+      }
+      const pixelSha256 = await shaHex("SHA-256", norm);
+
+      const c32 = document.createElement("canvas");
+      c32.width = 32; c32.height = 32;
+      const ctx32 = c32.getContext("2d", { willReadFrequently: true });
+      ctx32.drawImage(bmp, 0, 0, 32, 32);
+      bmp.close();
+      const d32 = ctx32.getImageData(0, 0, 32, 32).data;
+      const grid = Array.from({ length: 32 }, () => new Float64Array(32));
+      for (let y = 0; y < 32; y++) {
+        for (let x = 0; x < 32; x++) {
+          const p = (y * 32 + x) * 4;
+          const a = d32[p + 3] / 255;
+          grid[y][x] = a * (0.299 * d32[p] + 0.587 * d32[p + 1] + 0.114 * d32[p + 2]);
+        }
+      }
+      const tmp = Array.from({ length: 8 }, () => new Float64Array(32));
+      for (let u = 0; u < 8; u++) {
+        for (let x = 0; x < 32; x++) {
+          let s = 0;
+          for (let y = 0; y < 32; y++) s += DCT_BASIS[u][y] * grid[y][x];
+          tmp[u][x] = s;
+        }
+      }
+      const ac = new Float64Array(64);
+      let idx = 0;
+      for (let u = 0; u < 8; u++) {
+        for (let v = 0; v < 8; v++) {
+          const vv = (u === 0 && v === 0) ? 8 : v;
+          let s = 0;
+          for (let x = 0; x < 32; x++) s += tmp[u][x] * DCT_BASIS[vv][x];
+          ac[idx++] = s;
+        }
+      }
+      const sorted = Float64Array.from(ac).sort();
+      const med = 0.5 * (sorted[31] + sorted[32]);
+      let hi = 0, lo = 0;
+      for (let i = 0; i < 32; i++) if (ac[i] > med) lo = (lo | (1 << i)) >>> 0;
+      for (let i = 32; i < 64; i++) if (ac[i] > med) hi = (hi | (1 << (i - 32))) >>> 0;
+      const hex = "0x" + hi.toString(16).padStart(8, "0") + lo.toString(16).padStart(8, "0");
+      return { width: w, height: h, pixelSha256, hi, lo, phashHex: hex };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function popcnt32(v) {
+    v = v - ((v >>> 1) & 0x55555555);
+    v = (v & 0x33333333) + ((v >>> 2) & 0x33333333);
+    return (((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24;
+  }
+
+  function phashDist(a, b) {
+    if (a.pixelSha256 === b.pixelSha256) return 0;
+    return popcnt32((a.hi ^ b.hi) >>> 0) + popcnt32((a.lo ^ b.lo) >>> 0);
+  }
+
+  function pruneLegacyOverridesJs(rel, bytes, overlayDirs, issues) {
+    let root;
+    try { root = JSON.parse(dec.decode(bytes)); } catch (_) { return { bytes, pruned: 0 }; }
+    if (!Array.isArray(root.overrides) || !root.overrides.length) return { bytes, pruned: 0 };
+    const specs = root.overrides.map(ov => {
+      if (!ov || typeof ov !== "object" || !ov.predicate || typeof ov.predicate !== "object" || typeof ov.model !== "string") return null;
+      return { pred: ov.predicate, model: ov.model };
+    });
+    const dominates = (dom, cand) => {
+      for (const [k, dv] of Object.entries(dom.pred)) {
+        if (!(k in cand.pred)) return false;
+        const cv = cand.pred[k];
+        if (typeof dv === "number" && typeof cv === "number") { if (dv > cv) return false; }
+        else if (dv !== cv) return false;
+      }
+      return true;
+    };
+    const kept = [];
+    let pruned = 0;
+    for (let i = 0; i < root.overrides.length; i++) {
+      const si = specs[i];
+      if (!si) { kept.push(root.overrides[i]); continue; }
+      let shadowed = false;
+      for (let j = i + 1; j < root.overrides.length; j++) {
+        if (specs[j] && dominates(specs[j], si)) { shadowed = true; break; }
+      }
+      if (shadowed) pruned++;
+      else kept.push(root.overrides[i]);
+    }
+    if (!pruned) return { bytes, pruned: 0 };
+    const out = { ...root };
+    if (kept.length) out.overrides = kept; else delete out.overrides;
+    issues.push({
+      rule: "PM015", level: "note", path: rel,
+      message: `Pruned ${pruned} shadowed legacy override(s); ${kept.length} active override(s) remain.`
+    });
+    return { bytes: enc.encode(JSON.stringify(out, null, 2) + "\n"), pruned };
+  }
+
+  function pruneModelNodeJs(node, counter) {
+    if (!node || typeof node !== "object") return node;
+    const t = String(node.type || "").replace(/^minecraft:/, "");
+    if (t === "condition") {
+      const ot = node.on_true ? pruneModelNodeJs(node.on_true, counter) : null;
+      const of = node.on_false ? pruneModelNodeJs(node.on_false, counter) : null;
+      if (ot && of && JSON.stringify(ot) === JSON.stringify(of)) { counter.n++; return ot; }
+      return { ...node, ...(ot ? { on_true: ot } : {}), ...(of ? { on_false: of } : {}) };
+    }
+    if (t === "range_dispatch" && Array.isArray(node.entries)) {
+      const fb = node.fallback ? pruneModelNodeJs(node.fallback, counter) : null;
+      const sorted = node.entries.map(e => ({ ...e, model: pruneModelNodeJs(e.model, counter) })).sort((a, b) => Number(a.threshold) - Number(b.threshold));
+      const kept = [];
+      let active = fb ? JSON.stringify(fb) : null;
+      for (const row of sorted) {
+        const ms = JSON.stringify(row.model);
+        if (active && ms === active) counter.n++;
+        else { kept.push(row); active = ms; }
+      }
+      if (!kept.length && fb) { counter.n++; return fb; }
+      return { ...node, entries: kept, ...(fb ? { fallback: fb } : {}) };
+    }
+    if (t === "select" && Array.isArray(node.cases)) {
+      const fb = node.fallback ? pruneModelNodeJs(node.fallback, counter) : null;
+      const fbStr = fb ? JSON.stringify(fb) : null;
+      const coalesced = [];
+      for (const c of node.cases) {
+        const cm = pruneModelNodeJs(c.model, counter);
+        const cmStr = JSON.stringify(cm);
+        const keys = Array.isArray(c.when) ? c.when.map(String) : [String(c.when)];
+        if (fbStr && cmStr === fbStr) { counter.n++; continue; }
+        const hit = coalesced.find(x => x.mStr === cmStr);
+        if (hit) { for (const k of keys) if (!hit.keys.includes(k)) hit.keys.push(k); hit.arr = true; counter.n++; }
+        else coalesced.push({ keys: [...new Set(keys)], arr: Array.isArray(c.when), model: cm, mStr: cmStr });
+      }
+      if (!coalesced.length && fb) { counter.n++; return fb; }
+      return {
+        ...node,
+        cases: coalesced.map(x => ({ when: (!x.arr && x.keys.length === 1) ? x.keys[0] : x.keys, model: x.model })),
+        ...(fb ? { fallback: fb } : {})
+      };
+    }
+    return node;
+  }
+
+  function pruneItemDefJs(rel, bytes, issues) {
+    let root;
+    try { root = JSON.parse(dec.decode(bytes)); } catch (_) { return { bytes, pruned: 0 }; }
+    if (!root || !root.model) return { bytes, pruned: 0 };
+    const counter = { n: 0 };
+    const nextModel = pruneModelNodeJs(root.model, counter);
+    if (!counter.n) return { bytes, pruned: 0 };
+    issues.push({
+      rule: "PM015", level: "note", path: rel,
+      message: `Pruned ${counter.n} redundant item dispatch branch(es)/knot(s) in modern item definition tree.`
+    });
+    return { bytes: enc.encode(JSON.stringify({ ...root, model: nextModel }, null, 2) + "\n"), pruned: counter.n };
+  }
+
+  function validateSoundsJs(files, overlays, auditSounds, issues) {
+    const ovDirs = new Set(overlays.map(o => o.directory));
+    const allPaths = new Set(files.map(f => f.relative));
+    const definedEvents = new Set();
+    const edges = [];
+    const fileRefs = [];
+    for (const f of files) {
+      if (f.kind !== "SOUNDS") continue;
+      const parts = f.relative.split("/");
+      let ovDir = null, ns = null;
+      if (parts.length === 4 && ovDirs.has(parts[0]) && parts[1] === "assets") { ovDir = parts[0]; ns = parts[2]; }
+      else if (parts.length === 3 && parts[0] === "assets") { ns = parts[1]; }
+      else continue;
+      let root;
+      try { root = JSON.parse(dec.decode(f.bytes)); }
+      catch (e) { issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Malformed sounds.json: ${e.message}` }); continue; }
+      for (const [evKey, def] of Object.entries(root)) {
+        if (!/^[a-z0-9_.-]+$/.test(evKey)) {
+          issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Invalid sound event key '${evKey}': must match [a-z0-9_.-]+.` });
+          continue;
+        }
+        const fullId = `${ns}:${evKey}`;
+        definedEvents.add(fullId);
+        if (!def || typeof def !== "object") continue;
+        if (def.replace === true) {
+          issues.push({ rule: "PM018", level: "warning", path: f.relative, message: `Sound event '${evKey}' sets replace=true, discarding lower-pack sound pools.` });
+        }
+        for (const s of (Array.isArray(def.sounds) ? def.sounds : [])) {
+          const rawName = typeof s === "string" ? s : (s && typeof s.name === "string" ? s.name : null);
+          const sType = (s && typeof s === "object" && s.type) ? s.type : "file";
+          if (!rawName) { issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Sound entry in '${fullId}' is missing string 'name'.` }); continue; }
+          if (s && typeof s === "object") {
+            if (s.volume != null && Number(s.volume) <= 0) issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Sound '${rawName}' in '${fullId}' has volume <= 0.` });
+            if (s.pitch != null && Number(s.pitch) <= 0) issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Sound '${rawName}' in '${fullId}' has pitch <= 0.` });
+            if (s.weight != null && Number(s.weight) < 1) issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Sound '${rawName}' in '${fullId}' has weight < 1.` });
+          }
+          if (sType !== "event" && rawName.toLowerCase().endsWith(".ogg")) {
+            issues.push({ rule: "PM016", level: "error", path: f.relative, message: `Sound '${rawName}' in '${fullId}' must omit '.ogg' extension.` });
+            continue;
+          }
+          const sp = rawName.split(":");
+          const tNs = sp.length === 2 ? sp[0] : ns;
+          const tPath = sp.length === 2 ? sp[1] : sp[0];
+          if (sType === "event") edges.push({ file: f.relative, from: fullId, to: `${tNs}:${tPath}` });
+          else fileRefs.push({ file: f.relative, ev: fullId, ns: tNs, path: tPath, ovDir });
+        }
+      }
+    }
+    // Cycle DFS
+    const adj = new Map();
+    for (const e of edges) { if (!adj.has(e.from)) adj.set(e.from, []); adj.get(e.from).push(e); }
+    const st = new Map(), stack = [], seen = new Set();
+    function dfs(u) {
+      st.set(u, 1); stack.push(u);
+      for (const e of (adj.get(u) || [])) {
+        const s = st.get(e.to) || 0;
+        if (s === 0) dfs(e.to);
+        else if (s === 1) {
+          const idx = stack.indexOf(e.to);
+          const ch = stack.slice(idx).concat([e.to]);
+          const key = ch.slice(0, -1).sort().join("->");
+          if (!seen.has(key)) {
+            seen.add(key);
+            issues.push({ rule: "PM017", level: "error", path: e.file, message: `Circular type=event sound reference chain: ${ch.join(" -> ")}.` });
+          }
+        }
+      }
+      stack.pop(); st.set(u, 2);
+    }
+    for (const u of adj.keys()) if (!st.get(u)) dfs(u);
+
+    if (auditSounds) {
+      for (const r of fileRefs) {
+        if (r.ns === "minecraft") continue;
+        const base = `assets/${r.ns}/sounds/${r.path}.ogg`;
+        const ok = allPaths.has(base) || [...ovDirs].some(d => allPaths.has(`${d}/${base}`));
+        if (!ok) issues.push({ rule: "PM018", level: "warning", path: r.file, message: `Sound event '${r.ev}' references missing audio file '${base}'.` });
+      }
+      for (const e of edges) {
+        const tNs = e.to.split(":")[0];
+        if (tNs !== "minecraft" && !definedEvents.has(e.to)) {
+          issues.push({ rule: "PM018", level: "warning", path: e.file, message: `Sound event '${e.from}' redirects via type=event to undefined custom event '${e.to}'.` });
+        }
+      }
+    }
+  }
+
+  async function runMergePlan(packs, versionSpec) {
+    const opts = getOptions();
     const issues = [];
     const declared = packs.map(readDeclaredRange).filter(Boolean);
     let min = { major: 46, minor: null };
@@ -890,29 +1188,132 @@
         files.push({ relative: rel, bytes: mergedBytes, from: srcs.map(s => s.name), kind, merged: true, strategy });
       } else {
         const winner = srcs[srcs.length - 1];
-        issues.push({
-          rule: "PM006", level: "warning", path: rel,
-          message: `${srcs.length} packs ship this file with different content and it has one owner; ${winner.name}'s copy is written.`
-        });
-        files.push({ relative: rel, bytes: winner.files.get(rel), from: srcs.map(s => s.name), kind: "SINGLE_OWNER", merged: true, strategy: `Winner: ${winner.name}` });
+        let handledByPhash = false;
+        if (opts.phash && rel.toLowerCase().endsWith(".png")) {
+          const fps = await Promise.all(srcs.map(s => inspectPngClient(s.files.get(rel))));
+          if (fps.every(Boolean)) {
+            const uniqPixels = new Set(fps.map(x => x.pixelSha256));
+            if (uniqPixels.size === 1) {
+              let bestIdx = 0;
+              for (let i = 1; i < srcs.length; i++) if (srcs[i].files.get(rel).length < srcs[bestIdx].files.get(rel).length) bestIdx = i;
+              const saved = Math.max(...srcs.map(s => s.files.get(rel).length)) - srcs[bestIdx].files.get(rel).length;
+              issues.push({
+                rule: "PM013", level: "note", path: rel,
+                message: `${srcs.length} packs ship re-encoded PNGs with identical ${fps[0].width}x${fps[0].height} RGBA pixels (${fps[0].phashHex}); kept ${srcs[bestIdx].name}'s compact encoding (saved ${saved}B).`
+              });
+              files.push({ relative: rel, bytes: srcs[bestIdx].files.get(rel), from: srcs.map(s => s.name), kind: "SINGLE_OWNER", merged: false, strategy: `RGBA Coalesced (${srcs[bestIdx].name})` });
+              handledByPhash = true;
+            } else {
+              const winFp = fps[fps.length - 1];
+              const d = Math.min(...fps.slice(0, -1).map(x => phashDist(x, winFp)));
+              if (d <= 4) {
+                issues.push({
+                  rule: "PM013", level: "warning", path: rel,
+                  message: `${srcs.length} packs ship perceptually similar textures (${fps[0].phashHex} vs ${winFp.phashHex}, hamming=${d}/64); ${winner.name}'s copy is written.`
+                });
+                files.push({ relative: rel, bytes: winner.files.get(rel), from: srcs.map(s => s.name), kind: "SINGLE_OWNER", merged: true, strategy: `pHash Winner: ${winner.name}` });
+                handledByPhash = true;
+              }
+            }
+          }
+        }
+        if (!handledByPhash) {
+          issues.push({
+            rule: "PM006", level: "warning", path: rel,
+            message: `${srcs.length} packs ship this file with different content and it has one owner; ${winner.name}'s copy is written.`
+          });
+          files.push({ relative: rel, bytes: winner.files.get(rel), from: srcs.map(s => s.name), kind: "SINGLE_OWNER", merged: true, strategy: `Winner: ${winner.name}` });
+        }
       }
     }
 
+    let prunedOverrides = 0;
+    if (opts.pruneOverrides) {
+      for (const f of files) {
+        if (f.kind === "LEGACY_MODEL") {
+          const r = pruneLegacyOverridesJs(f.relative, f.bytes, overlayDirs, issues);
+          f.bytes = r.bytes; prunedOverrides += r.pruned;
+        } else if (f.kind === "ITEM_DEFINITION") {
+          const r = pruneItemDefJs(f.relative, f.bytes, issues);
+          f.bytes = r.bytes; prunedOverrides += r.pruned;
+        }
+      }
+    }
+
+    let dedupedOverlayFiles = 0, savedOverlayBytes = 0;
+    let activeFiles = files;
+    let activeOverlays = overlays;
+    if (opts.dedupeOverlays && overlays.length) {
+      const byPath = new Map(files.map(f => [f.relative, f]));
+      const ovIdx = new Map(overlays.map((o, i) => [o.directory, i]));
+      const removed = new Set();
+      const initCount = new Map(), remCount = new Map();
+      for (const f of files) {
+        const sl = f.relative.indexOf("/");
+        if (sl <= 0) continue;
+        const dir = f.relative.slice(0, sl);
+        if (!ovIdx.has(dir)) continue;
+        initCount.set(dir, (initCount.get(dir) || 0) + 1);
+        const inner = f.relative.slice(sl + 1);
+        if (!inner.startsWith("assets/")) continue;
+        const base = byPath.get(inner);
+        if (base && bytesEqual(base.bytes, f.bytes)) {
+          removed.add(f.relative);
+          remCount.set(dir, (remCount.get(dir) || 0) + 1);
+          dedupedOverlayFiles++;
+          savedOverlayBytes += f.bytes.length;
+          issues.push({
+            rule: "PM014", level: "note", path: f.relative,
+            message: `Pruned redundant overlay file matching '${inner}' (${f.bytes.length} byte(s) saved).`
+          });
+        }
+      }
+      if (removed.size) {
+        activeFiles = files.filter(f => !removed.has(f.relative));
+        activeOverlays = overlays.filter(o => (initCount.get(o.directory) || 0) === 0 || (remCount.get(o.directory) || 0) < (initCount.get(o.directory) || 0));
+      }
+    }
+
+    let perceptualDuplicates = issues.filter(i => i.rule === "PM013").length;
+    if (opts.phash) {
+      const actOvSet = new Set(activeOverlays.map(o => o.directory));
+      const pngs = [];
+      for (const f of activeFiles) {
+        if (!f.relative.toLowerCase().endsWith(".png") || actOvSet.has(f.relative.split("/")[0])) continue;
+        const fp = await inspectPngClient(f.bytes);
+        if (fp) pngs.push([f, fp]);
+      }
+      for (let i = 0; i < pngs.length; i++) {
+        for (let j = i + 1; j < pngs.length; j++) {
+          const d = phashDist(pngs[i][1], pngs[j][1]);
+          if (d <= 4) {
+            perceptualDuplicates++;
+            issues.push({
+              rule: "PM013", level: "warning", path: pngs[j][0].relative,
+              message: `Texture is perceptually near-identical (hamming=${d}/64, ${pngs[i][1].phashHex} vs ${pngs[j][1].phashHex}) to ${pngs[i][0].relative}.`
+            });
+          }
+        }
+      }
+    }
+
+    validateSoundsJs(activeFiles, activeOverlays, opts.auditSounds, issues);
+
     const desc = (declared.find(d => d.description) || {}).description || "merged pack";
-    files.push({
+    activeFiles.push({
       relative: "pack.mcmeta",
-      bytes: buildMcmeta(desc, min, max, overlays),
+      bytes: buildMcmeta(desc, min, max, activeOverlays),
       from: packs.map(p => p.name),
       kind: "PACK_META",
       merged: true,
-      strategy: overlays.length ? `Reconciled + ${overlays.length} Overlay(s)` : "Reconciled Range"
+      strategy: activeOverlays.length ? `Reconciled + ${activeOverlays.length} Overlay(s)` : "Reconciled Range"
     });
-    files.sort((a, b) => a.relative.localeCompare(b.relative));
+    activeFiles.sort((a, b) => a.relative.localeCompare(b.relative));
 
     const order = { error: 0, warning: 1, note: 2 };
     issues.sort((a, b) => order[a.level] - order[b.level]);
 
-    return { packs, files, issues, min, max, overlays };
+    return { packs, files: activeFiles, issues, min, max, overlays: activeOverlays, dedupedOverlayFiles, savedOverlayBytes, prunedOverrides, perceptualDuplicates };
   }
 
   // CRC32 + Deterministic Stored ZIP writer (DOS epoch 1980-01-01 00:00:00 => time=0, date=0x0021)
@@ -1053,12 +1454,34 @@
   function makePack(name, objMap) {
     const m = new Map();
     for (const [k, v] of Object.entries(objMap)) {
-      m.set(k, enc.encode(typeof v === "string" ? v : JSON.stringify(v, null, 2) + "\n"));
+      if (v instanceof Uint8Array) m.set(k, v);
+      else m.set(k, enc.encode(typeof v === "string" ? v : JSON.stringify(v, null, 2) + "\n"));
     }
     return { name, files: m };
   }
 
-  function loadDemoStack() {
+  async function makeDemoSpriteBytes(size, variant) {
+    const cnv = document.createElement("canvas");
+    cnv.width = size; cnv.height = size;
+    const ctx = cnv.getContext("2d");
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const nx = x / size, ny = y / size;
+        if (Math.abs(nx - (1 - ny)) < 0.24) {
+          const r = variant === "tint" ? 210 : 205;
+          ctx.fillStyle = `rgba(${r}, 220, 250, 1)`;
+          ctx.fillRect(x, y, 1, 1);
+        }
+      }
+    }
+    const blob = await new Promise(res => cnv.toBlob(res, "image/png"));
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+
+  async function loadDemoStack() {
+    const ruby16 = await makeDemoSpriteBytes(16, "base");
+    const ruby32Near = await makeDemoSpriteBytes(32, "tint");
+    const oggStub = new Uint8Array([0x4F, 0x67, 0x67, 0x53, 0x00, 0x02]);
     state.packs = [
       makePack("oraxen-items", {
         "pack.mcmeta": {
@@ -1070,7 +1493,8 @@
             property: "minecraft:custom_model_data",
             entries: [
               { threshold: 1001, model: { type: "minecraft:model", model: "oraxen:item/ruby_scroll" } },
-              { threshold: 1002, model: { type: "minecraft:model", model: "oraxen:item/ancient_tome" } }
+              { threshold: 1002, model: { type: "minecraft:model", model: "oraxen:item/ruby_scroll" } },
+              { threshold: 1003, model: { type: "minecraft:model", model: "oraxen:item/ancient_tome" } }
             ],
             fallback: { type: "minecraft:model", model: "minecraft:item/paper" }
           }
@@ -1092,7 +1516,9 @@
           "custom.relic_open": { sounds: ["oraxen:relic_open"] },
           "shared.boss_roar": { sounds: ["oraxen:roar_v1"] }
         },
-        "assets/minecraft/textures/item/ruby.png": "PNG_ORAXEN_RUBY_V1"
+        "assets/oraxen/sounds/relic_open.ogg": oggStub,
+        "assets/oraxen/sounds/roar_v1.ogg": oggStub,
+        "assets/oraxen/textures/item/ruby_blade.png": ruby16
       }),
       makePack("nexo-26-3", {
         "pack.mcmeta": {
@@ -1128,7 +1554,8 @@
           ]
         },
         "v26_3/assets/minecraft/lang/en_us.json": { "item.nexo.dragon_sigil": "Dragon Sigil (26.3)" },
-        "assets/minecraft/textures/item/ruby.png": "PNG_NEXO_RUBY_HD_V2"
+        "v26_3/assets/oraxen/textures/item/ruby_blade.png": ruby16,
+        "assets/nexo/textures/item/ruby_blade_hd.png": ruby32Near
       }),
       makePack("hud-bars", {
         "pack.mcmeta": {
@@ -1143,8 +1570,9 @@
         },
         "assets/minecraft/sounds.json": {
           "hud.mana_full": { sounds: ["hud:chime"] },
-          "shared.boss_roar": { sounds: ["hud:roar_remastered"] }
+          "shared.boss_roar": { replace: true, sounds: ["hud:roar_remastered"] }
         },
+        "assets/hud/sounds/roar_remastered.ogg": oggStub,
         "assets/minecraft/atlases/blocks.json": {
           sources: [{ type: "directory", source: "hud_icons", prefix: "hud_icons/" }]
         },
@@ -1152,7 +1580,7 @@
       })
     ];
     state.selectedPath = "assets/minecraft/items/paper.json";
-    recompute();
+    await recompute();
   }
 
   function renderSarif(plan) {
@@ -1163,7 +1591,7 @@
         tool: {
           driver: {
             name: "packmerge",
-            version: "0.3.0",
+            version: "0.4.0",
             informationUri: "https://github.com/SalyyS1/packmerge",
             rules: Object.entries(RULES).map(([id, r]) => ({
               id, name: r.name,
@@ -1205,6 +1633,10 @@
       maxFormat: fmtStr(plan.max),
       overlays: plan.overlays.map(o => ({ directory: o.directory, minFormat: fmtStr(o.min), maxFormat: fmtStr(o.max) })),
       combinedCounts: combined,
+      dedupedOverlayFiles: plan.dedupedOverlayFiles || 0,
+      savedOverlayBytes: plan.savedOverlayBytes || 0,
+      prunedOverrides: plan.prunedOverrides || 0,
+      perceptualDuplicates: plan.perceptualDuplicates || 0,
       errorCount: plan.issues.filter(i => i.level === "error").length,
       warningCount: plan.issues.filter(i => i.level === "warning").length,
       noteCount: plan.issues.filter(i => i.level === "note").length,
@@ -1234,7 +1666,7 @@
 
     let plan;
     try {
-      plan = runMergePlan(state.packs, document.getElementById("versionOverride").value);
+      plan = await runMergePlan(state.packs, document.getElementById("versionOverride").value);
     } catch (err) {
       document.getElementById("sha1Output").textContent = `Error: ${err.message}`;
       return;
@@ -1407,6 +1839,9 @@
   document.getElementById("btnLoadDemo").addEventListener("click", loadDemoStack);
   document.getElementById("btnClearPacks").addEventListener("click", () => { state.packs = []; recompute(); });
   document.getElementById("versionOverride").addEventListener("input", () => recompute());
+  ["optDedupeOverlays", "optPhash", "optPruneOverrides", "optAuditSounds"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => recompute());
+  });
 
   document.querySelectorAll(".tab").forEach(tab => {
     tab.addEventListener("click", () => {

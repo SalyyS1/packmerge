@@ -93,6 +93,48 @@ enum class MergeRule(
         shortDescription = "Pack format reconciliation or coverage note",
         fullDescription = "Informational note explaining pack.mcmeta floor/ceiling reconciliation or font providers whose codepoint coverage is resolved at client runtime.",
     ),
+    PERCEPTUAL_TEXTURE_DUPLICATE(
+        id = "PM013",
+        ruleName = "PerceptualTextureDuplicate",
+        defaultLevel = IssueLevel.WARNING,
+        shortDescription = "Perceptually identical or near-duplicate PNG texture across packs",
+        fullDescription = "Multiple textures share identical decoded RGBA pixels or a 64-bit 2D DCT perceptual image hash within the configured Hamming distance threshold.",
+    ),
+    OVERLAY_ASSET_DEDUPLICATED(
+        id = "PM014",
+        ruleName = "OverlayAssetDeduplicated",
+        defaultLevel = IssueLevel.NOTE,
+        shortDescription = "Redundant dual-era overlay asset pruned",
+        fullDescription = "An asset inside a pack.mcmeta overlays.entries directory matches its effective underlying base or lower-overlay file across its entire format range and was pruned.",
+    ),
+    MODEL_OVERRIDE_PRUNED(
+        id = "PM015",
+        ruleName = "ModelOverridePruned",
+        defaultLevel = IssueLevel.NOTE,
+        shortDescription = "Shadowed or redundant item model override pruned",
+        fullDescription = "Unreachable legacy model overrides, redundant range_dispatch step knots, fallback-equivalent select cases, or tautological condition branches were pruned.",
+    ),
+    SOUND_ATLAS_INVALID_SCHEMA(
+        id = "PM016",
+        ruleName = "SoundAtlasInvalidSchema",
+        defaultLevel = IssueLevel.ERROR,
+        shortDescription = "Invalid Minecraft 26.3 sounds.json event or entry schema",
+        fullDescription = "A sound event in sounds.json uses an invalid identifier, appends a redundant .ogg file extension, or sets non-positive volume, pitch, weight, or attenuation_distance.",
+    ),
+    SOUND_EVENT_REFERENCE_CYCLE(
+        id = "PM017",
+        ruleName = "SoundEventReferenceCycle",
+        defaultLevel = IssueLevel.ERROR,
+        shortDescription = "Circular sound event reference chain in sounds.json",
+        fullDescription = "One or more sound entries with type=event form a cycle across sounds.json definitions, causing recursive resolution failure on the client.",
+    ),
+    SOUND_MISSING_OGG_OR_WIPE(
+        id = "PM018",
+        ruleName = "SoundMissingOggOrWipe",
+        defaultLevel = IssueLevel.WARNING,
+        shortDescription = "Destructive replace=true sound wipe or missing .ogg asset",
+        fullDescription = "A sound event sets replace=true to wipe lower-pack sound pools or references a missing .ogg sound file or dangling event target under --audit-sounds.",
+    ),
 }
 
 /** Something worth telling the person running the merge, with the file and diagnostic rule it belongs to. */

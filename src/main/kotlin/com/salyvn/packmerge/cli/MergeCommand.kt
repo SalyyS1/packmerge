@@ -7,11 +7,13 @@ import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.arguments.multiple
 import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.int
 import com.github.ajalt.clikt.parameters.types.path
 import com.salyvn.packmerge.core.PackFormats
 import com.salyvn.packmerge.core.PackMetaException
 import com.salyvn.packmerge.merge.JsonMergeReport
 import com.salyvn.packmerge.merge.MergeKind
+import com.salyvn.packmerge.merge.MergeOptions
 import com.salyvn.packmerge.merge.MergePlan
 import com.salyvn.packmerge.merge.PackMerge
 import com.salyvn.packmerge.merge.PackSource
@@ -26,7 +28,8 @@ import kotlin.io.path.isRegularFile
 import kotlin.io.path.listDirectoryEntries
 
 /**
- * CLI command for deterministic multi-pack resource pack merging and SARIF v2.1.0 conflict analysis.
+ * CLI command for deterministic multi-pack resource pack merging, dual-era pHash deduplication,
+ * override tree pruning, Minecraft 26.3 sound atlas validation, and SARIF v2.1.0 conflict analysis.
  */
 class MergeCommand : CliktCommand(name = "packmerge") {
 
@@ -56,6 +59,31 @@ class MergeCommand : CliktCommand(name = "packmerge") {
 
     private val description by option("--description", help = "Description for the merged pack.mcmeta")
 
+    private val dedupeOverlays by option(
+        "--dedupe-overlays",
+        help = "Prune redundant files in overlays.entries that match underlying base/overlay assets across their format range",
+    ).flag()
+
+    private val phash by option(
+        "--phash",
+        help = "Run 64-bit 2D DCT perceptual image hash (pHash) and RGBA pixel deduplication across PNG textures",
+    ).flag()
+
+    private val phashThreshold by option(
+        "--phash-threshold",
+        help = "Maximum 64-bit pHash Hamming distance (0..64, default 4) flagged as a near-duplicate texture",
+    ).int()
+
+    private val pruneOverrides by option(
+        "--prune-overrides",
+        help = "Prune shadowed legacy model overrides and redundant 1.21.4..26.3 dispatch knots/branches",
+    ).flag()
+
+    private val auditSounds by option(
+        "--audit-sounds",
+        help = "Verify Minecraft 26.3 sounds.json .ogg file paths and custom type=event references across root and overlays",
+    ).flag()
+
     private val force by option("--force", help = "Write into --out or --zip even if the target already exists").flag()
 
     private val dryRun by option("--dry-run", help = "Report what would be merged and write nothing").flag()
@@ -77,7 +105,16 @@ class MergeCommand : CliktCommand(name = "packmerge") {
     }
 
     private fun execute() {
-        if (packs.size < 2) fail("Give at least two packs to merge. One pack is already merged.")
+        val options = MergeOptions(
+            dedupeOverlays = dedupeOverlays,
+            phash = phash || phashThreshold != null,
+            phashThreshold = phashThreshold ?: 4,
+            pruneOverrides = pruneOverrides,
+            auditSounds = auditSounds,
+        )
+        if (packs.isEmpty() || (packs.size < 2 && !options.hasSinglePackTransforms)) {
+            fail("Give at least two packs to merge. One pack is already merged.")
+        }
         if (out == null && zip == null && sarif == null && !dryRun) {
             fail("Give --out DIR, --zip FILE, --sarif FILE, or --dry-run.")
         }
@@ -97,7 +134,7 @@ class MergeCommand : CliktCommand(name = "packmerge") {
 
         val range = versions?.let { PackFormats.parseRange(it) }
         val sources = packs.mapIndexed { index, path -> PackSource(path, index) }
-        val merge = PackMerge(sources, range, description)
+        val merge = PackMerge(sources, range, description, options)
         val plan = merge.plan()
 
         val effectiveDryRun = dryRun || (outDir == null && zipPath == null)
@@ -151,6 +188,12 @@ class MergeCommand : CliktCommand(name = "packmerge") {
         echo("   ${plan.files.size} file(s), pack.mcmeta claiming ${plan.range.first}..${plan.range.second}$overlaySuffix")
         LABELS.forEach { (kind, label) ->
             plan.combined[kind]?.let { count -> echo("   $count $label") }
+        }
+        if (plan.dedupedOverlayFiles > 0) {
+            echo("   ${plan.dedupedOverlayFiles} redundant overlay file(s) deduplicated (${plan.savedOverlayBytes} bytes saved)")
+        }
+        if (plan.prunedOverrides > 0) {
+            echo("   ${plan.prunedOverrides} shadowed/redundant override branch(es) pruned")
         }
 
         if (plan.issues.isNotEmpty()) {

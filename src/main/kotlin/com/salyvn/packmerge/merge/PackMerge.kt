@@ -17,12 +17,31 @@ data class ZipArtifact(
     val sizeBytes: Long,
 )
 
+data class MergeOptions(
+    val dedupeOverlays: Boolean = false,
+    val phash: Boolean = false,
+    val phashThreshold: Int = 4,
+    val pruneOverrides: Boolean = false,
+    val auditSounds: Boolean = false,
+) {
+    init {
+        require(phashThreshold in 0..64) { "--phash-threshold must be between 0 and 64 (got $phashThreshold)." }
+    }
+
+    val hasSinglePackTransforms: Boolean
+        get() = dedupeOverlays || phash || pruneOverrides || auditSounds
+}
+
 class MergePlan(
     val packs: List<PackSource>,
     val files: List<MergedFile>,
     val issues: List<Issue>,
     val range: Pair<PackFormat, PackFormat>,
     val overlays: List<OverlayEntry> = emptyList(),
+    val dedupedOverlayFiles: Int = 0,
+    val savedOverlayBytes: Long = 0L,
+    val prunedOverrides: Int = 0,
+    val perceptualDuplicates: Int = 0,
 ) {
     val errors: Int get() = issues.count { it.level == IssueLevel.ERROR }
     val warnings: Int get() = issues.count { it.level == IssueLevel.WARNING }
@@ -40,16 +59,17 @@ class PackMerge(
     private val packs: List<PackSource>,
     private val versions: Pair<PackFormat, PackFormat>?,
     private val description: String?,
+    private val options: MergeOptions = MergeOptions(),
 ) {
 
     fun plan(): MergePlan {
         val report = MergeReport()
-        val files = mutableListOf<MergedFile>()
+        val rawFiles = mutableListOf<MergedFile>()
 
         val declared = packs.mapNotNull { PackRanges.read(it) }
         val range = versions ?: PackRanges.reconcile(declared, report) ?: (PackFormat(46) to PackFormat(46))
-        val overlays = PackRanges.reconcileOverlays(declared, report)
-        val overlayDirs = overlays.map { it.directory }.toSet()
+        val reconciledOverlays = PackRanges.reconcileOverlays(declared, report)
+        val initialOverlayDirs = reconciledOverlays.map { it.directory }.toSet()
 
         val owners = linkedMapOf<String, MutableList<PackSource>>()
         packs.forEach { pack ->
@@ -57,42 +77,81 @@ class PackMerge(
         }
 
         owners.entries.sortedBy { it.key }.forEach { (relative, sources) ->
-            val kind = MergeRules.of(relative, overlayDirs)
+            val kind = MergeRules.of(relative, initialOverlayDirs)
             if (kind == MergeKind.PACK_META) return@forEach
 
             if (sources.size == 1) {
-                files += MergedFile(relative, sources.single().read(relative), listOf(sources.single().name), kind)
+                rawFiles += MergedFile(relative, sources.single().read(relative), listOf(sources.single().name), kind)
                 return@forEach
             }
 
             val contents = sources.map { it.read(relative) }
             if (contents.map { digest(it) }.distinct().size == 1) {
-                files += MergedFile(relative, contents.first(), sources.map { it.name }, kind)
+                rawFiles += MergedFile(relative, contents.first(), sources.map { it.name }, kind)
                 return@forEach
             }
 
             val merged = combine(relative, kind, sources, report)
             if (merged != null) {
-                files += MergedFile(relative, merged, sources.map { it.name }, kind, merged = true)
+                rawFiles += MergedFile(relative, merged, sources.map { it.name }, kind, merged = true)
             } else {
-                report.warn(
-                    relative,
-                    "${sources.size} packs ship this file with different content and it has one owner; " +
-                        "${sources.last().name}'s copy is the one written.",
-                    MergeRule.SINGLE_OWNER_OVERWRITE,
-                )
-                files += MergedFile(relative, contents.last(), sources.map { it.name }, MergeKind.SINGLE_OWNER, merged = true)
+                rawFiles += AssetDeduplicator.resolveSingleOwner(relative, sources, contents, options, report)
             }
         }
 
-        files += MergedFile(
+        val prunedResult = if (options.pruneOverrides) {
+            ModelOverridePruner.pruneAll(rawFiles, initialOverlayDirs, report)
+        } else {
+            PruneResult(rawFiles, 0)
+        }
+
+        val dedupedResult = AssetDeduplicator.deduplicateOverlays(
+            files = prunedResult.files,
+            overlays = reconciledOverlays,
+            options = options,
+            report = report,
+        )
+
+        val activeOverlays = dedupedResult.overlays
+        val activeOverlayDirs = activeOverlays.map { it.directory }.toSet()
+        val compiledFiles = dedupedResult.files.toMutableList()
+
+        val crossPathDuplicates = AssetDeduplicator.scanCrossPathDuplicates(
+            files = compiledFiles,
+            overlayDirs = activeOverlayDirs,
+            options = options,
+            report = report,
+        )
+
+        SoundAtlasValidator.validateAll(
+            files = compiledFiles,
+            overlays = activeOverlays,
+            auditMissingAssets = options.auditSounds,
+            report = report,
+        )
+
+        compiledFiles += MergedFile(
             "pack.mcmeta",
-            PackMeta.render(description ?: descriptionFrom(declared), range.first, range.second, overlays).toByteArray(),
+            PackMeta.render(description ?: descriptionFrom(declared), range.first, range.second, activeOverlays).toByteArray(),
             packs.map { it.name },
             MergeKind.PACK_META,
         )
 
-        return MergePlan(packs, files.sortedBy { it.relative }, report.issues, range, overlays)
+        val samePathPerceptualCount = report.issues.count {
+            it.rule == MergeRule.PERCEPTUAL_TEXTURE_DUPLICATE
+        }
+
+        return MergePlan(
+            packs = packs,
+            files = compiledFiles.sortedBy { it.relative },
+            issues = report.issues,
+            range = range,
+            overlays = activeOverlays,
+            dedupedOverlayFiles = dedupedResult.dedupedFiles,
+            savedOverlayBytes = dedupedResult.savedBytes,
+            prunedOverrides = prunedResult.prunedEntries,
+            perceptualDuplicates = maxOf(crossPathDuplicates, samePathPerceptualCount),
+        )
     }
 
     fun write(plan: MergePlan, out: Path) {
@@ -133,7 +192,7 @@ class PackMerge(
     private fun combine(relative: String, kind: MergeKind, sources: List<PackSource>, report: MergeReport): ByteArray? =
         when (kind) {
             MergeKind.FONT -> FontMerge.merge(relative, sources, report)
-            MergeKind.SOUNDS -> ObjectMerge.mergeObjects(relative, sources, report, IssueLevel.WARNING, MergeRule.SOUND_EVENT_OVERWRITE)
+            MergeKind.SOUNDS -> SoundAtlasValidator.mergeSounds(relative, sources, report)
             MergeKind.LANG -> ObjectMerge.mergeObjects(relative, sources, report, IssueLevel.NOTE, MergeRule.ADDITIVE_MERGE_SUMMARY)
             MergeKind.ATLAS -> ObjectMerge.mergeArrayUnder(relative, "sources", sources, report)
             MergeKind.LEGACY_MODEL -> ItemModelMerge.mergeLegacyModel(relative, sources, report)
